@@ -1,0 +1,8 @@
+joblib
+networkx
+numpy
+pandas
+plotnine
+psutil
+scipy
+tqdm

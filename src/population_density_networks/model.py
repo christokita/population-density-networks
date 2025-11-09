@@ -127,12 +127,31 @@ def analyze_network_structure(network: pd.DataFrame) -> pd.Series:
     # Convert to netwokx graph
     g = nx.from_pandas_adjacency(network)
     
+    # Check connectivity
+    is_connected = nx.is_connected(g)
+    num_components = nx.number_connected_components(g)
+    
+    # For disconnected graphs, calculate path metrics on largest component
+    if is_connected:
+        avg_shortest_path = nx.average_shortest_path_length(g)
+        diameter = nx.diameter(g)
+        largest_component_size = len(g)
+    else:
+        largest_cc = max(nx.connected_components(g), key=len)
+        g_largest = g.subgraph(largest_cc)
+        avg_shortest_path = nx.average_shortest_path_length(g_largest)
+        diameter = nx.diameter(g_largest)
+        largest_component_size = len(largest_cc)
+    
     return pd.Series({
-        'density': nx.density(g),
-        'avg_shortest_path': nx.average_shortest_path_length(g),
-        'diameter': nx.diameter(g),
-        'clustering_coef': nx.average_clustering(g),
-        'modularity': nx.community.modularity(g, communities=nx.community.greedy_modularity_communities(g), weight=None),
-        'assortativity': nx.degree_assortativity_coefficient(g)
+        'network_density': nx.density(g),
+        'network_is_connected': is_connected,
+        'network_num_components': num_components,
+        'network_largest_component_size': largest_component_size,
+        'network_avg_shortest_path': avg_shortest_path,  # On largest component if disconnected
+        'network_diameter': diameter,  # On largest component if disconnected
+        'network_clustering_coef': nx.average_clustering(g),
+        'network_modularity': nx.community.modularity(g, communities=nx.community.greedy_modularity_communities(g), weight=None),
+        'network_assortativity': nx.degree_assortativity_coefficient(g)
     })
     
