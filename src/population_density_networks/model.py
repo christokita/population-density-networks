@@ -44,6 +44,7 @@ class NetworkFormationModel:
         k_sigma = np.sqrt(k_sigma2)
         k_mu = np.log(k_cap_mean) - 0.5 * k_sigma2
         self.k_limit = np.random.lognormal(mean=k_mu, sigma=k_sigma, size=self.n)
+        self.k_limit = np.maximum(1, self.k_limit) #make sure minimum degree limit is 1
 
 
     def set_up_world(self, density: float) -> None:
