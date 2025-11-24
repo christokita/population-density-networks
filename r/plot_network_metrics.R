@@ -5,6 +5,7 @@
 ###################################################
 
 require(dplyr)
+require(tidyr)
 require(ggplot2)
 require(scales)
 require(viridisLite)
@@ -17,7 +18,7 @@ source("_plot_themes/theme_ctokita.R")
 ##########################
 heat_map_pal <- c('#fff7fb','#ece7f2','#d0d1e6','#a6bddb','#74a9cf','#3690c0','#0570b0','#045a8d','#023858')
 heat_map_pal <-  rocket(9)
-
+plot_pal <- heat_map_pal[5]
 
 ##########################
 # Load data
@@ -230,4 +231,125 @@ gg_heatmap_grid <-
   plot_layout(ncol = 3)
 
 gg_heatmap_grid
-ggsave(gg_heatmap_grid, filename = 'output/full_parameter_sweep_plot.pdf', width=180, height=100, units='mm')
+ggsave(
+  gg_heatmap_grid,
+  filename = 'output/full_parameter_sweep_plot.pdf',
+  width = 180,
+  height = 100,
+  units = 'mm',
+  dpi = 400
+)
+
+
+##########################
+# PLOT: Population density sweep within selected social capacity
+##########################
+# Select simulations
+simulation_data <- sweep_data %>% 
+  filter(k_cap_mean == 50)
+
+simulation_results <- 
+  simulation_data %>% 
+  select(k_cap_mean, population_density, network_density:network_assortativity, -network_is_connected) %>% 
+  gather('metric', 'value', -k_cap_mean, -population_density) %>% 
+  group_by(k_cap_mean, population_density, metric) %>% 
+  summarise(
+    mean = mean(value),
+    sd = sd(value)
+  ) %>% 
+  arrange(metric, population_density)
+
+# Custom function to plot the metric of choice
+plot_density_sweep<- function(data, metric_name, metric_label, pal) {
+  # Grab metric
+  data <- 
+    data %>% 
+    filter(metric == metric_name) %>% 
+    mutate(
+      lower = mean - sd,
+      upper = mean + sd
+    )
+  
+  # Create plot
+  gg_metric_plot <-
+    ggplot(data, aes(x=population_density, y=mean)) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), color = NA, alpha = 0.25, fill = pal) +
+    geom_line(linewidth = 0.6, color = pal) +
+    geom_point(stroke = 0, size = 2, color = pal) +
+    scale_x_log10(
+      breaks = 10**seq(-4, 4, 2),
+      expand = c(0, 0),
+      labels = trans_format("log10", math_format(10^.x))
+    ) +
+    scale_y_continuous(
+      expand = c(0, 0)
+    ) +
+    labs(
+      x = "Population density",
+      y = metric_label
+    ) +
+    theme_ctokita() 
+  return(gg_metric_plot)
+}
+
+# Individual metric plots
+gg_density <- plot_density_sweep(
+  data = simulation_results,
+  metric_name = 'network_density',
+  metric_label = 'Network density',
+  pal = plot_pal
+)
+
+gg_diameter <- plot_density_sweep(
+  data = simulation_results,
+  metric_name = 'network_diameter',
+  metric_label = 'Network diameter',
+  pal = plot_pal
+)
+
+gg_shortest_path <- plot_density_sweep(
+  data = simulation_results,
+  metric_name = 'network_avg_shortest_path',
+  metric_label = 'Avg. shortest path',
+  pal = plot_pal
+)
+
+gg_clustering <- plot_density_sweep(
+  data = simulation_results,
+  metric_name = 'network_clustering_coef',
+  metric_label = 'Clustering coefficient',
+  pal = plot_pal
+)
+
+gg_modularity <- plot_density_sweep(
+  data = simulation_results,
+  metric_name = 'network_modularity',
+  metric_label = 'Modularity',
+  pal = plot_pal
+)
+
+gg_assortativity <- plot_density_sweep(
+  data = simulation_results,
+  metric_name = 'network_assortativity',
+  metric_label = 'Assortativity',
+  pal = plot_pal
+)
+
+
+##########################
+# PLOT: Grid of density-sweep metrics
+##########################
+gg_density_sweep_grid <-
+  (gg_density + gg_diameter + gg_shortest_path +
+     gg_clustering + gg_modularity + gg_assortativity) +
+  plot_layout(ncol = 3)
+
+gg_density_sweep_grid
+ggsave(
+  gg_density_sweep_grid,
+  filename = 'output/population_density_sweep.pdf',
+  width    = 180,
+  height   = 90,
+  units    = 'mm',
+  dpi      = 400
+)
