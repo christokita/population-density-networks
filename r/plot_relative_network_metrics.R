@@ -34,16 +34,20 @@ paramter_combination_results <-
 
 
 ##########################
-# PLOT: Heat maps of network metrics
+# PLOT: Heat maps of relative network metrics (within social capacity)
 ##########################
 # Custom function to plot the metric of choice
-plot_heat_map <- function(data, metric_name, metric_label, pal) {
+plot_relative_heat_map <- function(data, metric_name, metric_label, pal) {
   # Grab metric
   data$metric <- data[[metric_name]]
+  data <- 
+    data %>% 
+    group_by(k_cap_mean) %>% 
+    mutate(relative_metric = (metric - min(metric)) / (max(metric) - min(metric)))
   
   # Create plot
   gg_heatmap <-
-    ggplot(data, aes(x=population_density, y=k_cap_mean, fill=metric, color=metric)) +
+    ggplot(data, aes(x=population_density, y=k_cap_mean, fill=relative_metric, color=relative_metric)) +
     geom_tile() +
     scale_x_log10(
       breaks = 10**seq(-4, 4, 2),
@@ -55,12 +59,16 @@ plot_heat_map <- function(data, metric_name, metric_label, pal) {
       expand = c(0, 0)
     ) +
     scale_fill_gradientn(
-      name = metric_label,
-      colors = pal
+      name = paste0('Relative\n', metric_label),,
+      colors = pal,
+      # limits = c(0, 1),
+      # breaks = c(0, 1)
     ) +
     scale_color_gradientn(
-      name = metric_label,
-      colors = pal
+      name = paste0('Relative\n', metric_label),
+      colors = pal,
+      # limits = c(0, 1),
+      # breaks = c(0, 1)
     ) +
     labs(
       x = "Population density",
@@ -70,106 +78,108 @@ plot_heat_map <- function(data, metric_name, metric_label, pal) {
     theme(
       axis.line = element_blank(),
       panel.border = element_rect(linewidth = 0.3),
+      legend.title = element_text(margin = margin(b = 5)),
+      legend.key.height = unit(2, 'mm')
     )
   return(gg_heatmap)
 }
 
 # Network density
-gg_heatmap_density <- plot_heat_map(
+gg_heatmap_density_relative <- plot_relative_heat_map(
   data = paramter_combination_results,
   metric_name = 'network_density',
-  metric_label = 'Network\ndensity',
+  metric_label = 'network density',
   pal = heat_map_pal
 )
-gg_heatmap_density
+gg_heatmap_density_relative
 ggsave(
-  gg_heatmap_density,
-  filename = 'output/heatmap_network_density.pdf',
+  gg_heatmap_density_relative,
+  filename = 'output/heatmap_relative_network_density.pdf',
   width = 90, height = 45, units = 'mm',
   dpi = 400,
 )
 
 # Network diameter
-gg_heatmap_diameter <- plot_heat_map(
+gg_heatmap_diameter_relative <- plot_relative_heat_map(
   data = paramter_combination_results,
   metric_name = 'network_diameter',
-  metric_label = 'Network\ndiameter',
+  metric_label = 'network diameter',
   pal = heat_map_pal
 )
-gg_heatmap_diameter
+gg_heatmap_diameter_relative
 ggsave(
-  gg_heatmap_diameter,
-  filename = 'output/heatmap_network_diameter.pdf',
+  gg_heatmap_diameter_relative,
+  filename = 'output/heatmap_network_diameter_relative.pdf',
   width = 90, height = 45, units = 'mm',
   dpi = 400,
 )
 
 # Shortest path
-gg_heatmap_path <- plot_heat_map(
+gg_heatmap_path_relative <- plot_relative_heat_map(
   data = paramter_combination_results,
   metric_name = 'network_avg_shortest_path',
-  metric_label = 'Avg. shortest\npath',
+  metric_label = 'shortest path',
   pal = heat_map_pal
 )
-gg_heatmap_path
+gg_heatmap_path_relative
 ggsave(
-  gg_heatmap_path,
-  filename = 'output/heatmap_shortest_path.pdf',
+  gg_heatmap_path_relative,
+  filename = 'output/heatmap_shortest_path_relative.pdf',
   width = 90, height = 45, units = 'mm',
   dpi = 400,
 )
 
 # Clustering
-gg_heatmap_clustering <- plot_heat_map(
+gg_heatmap_clustering_relative <- plot_relative_heat_map(
   data = paramter_combination_results,
   metric_name = 'network_clustering_coef',
-  metric_label = 'Clustering\ncoefficient',
+  metric_label = 'clustering',
   pal = heat_map_pal
 )
-gg_heatmap_clustering
+gg_heatmap_clustering_relative
 ggsave(
-  gg_heatmap_clustering,
-  filename = 'output/heatmap_clustering.pdf',
+  gg_heatmap_clustering_relative,
+  filename = 'output/heatmap_clustering_relative.pdf',
   width = 90, height = 45, units = 'mm',
   dpi = 400,
 )
 
 # Modularity
-gg_heatmap_modularity <- plot_heat_map(
+gg_heatmap_modularity_relative <- plot_relative_heat_map(
   data = paramter_combination_results,
   metric_name = 'network_modularity',
-  metric_label = 'Modularity',
+  metric_label = 'modularity',
   pal = heat_map_pal
 )
-gg_heatmap_modularity
+gg_heatmap_modularity_relative
 ggsave(
-  gg_heatmap_modularity,
-  filename = 'output/heatmap_modularity.pdf',
+  gg_heatmap_modularity_relative,
+  filename = 'output/heatmap_modularity_relative.pdf',
   width = 90, height = 45, units = 'mm',
   dpi = 400,
 )
 
 # Assortativity
-gg_heatmap_assortativity <- plot_heat_map(
+gg_heatmap_assortativity_relative <- plot_relative_heat_map(
   data = paramter_combination_results,
   metric_name = 'network_assortativity',
-  metric_label = 'Assortativity',
+  metric_label = 'assortativity',
   pal = heat_map_pal
 )
-gg_heatmap_assortativity
+gg_heatmap_assortativity_relative
 ggsave(
-  gg_heatmap_assortativity,
-  filename = 'output/heatmap_assortativity.pdf',
+  gg_heatmap_assortativity_relative,
+  filename = 'output/heatmap_assortativity_relative.pdf',
   width = 90, height = 45, units = 'mm',
   dpi = 400,
 )
 
 
 ##########################
-# PLOT: Grid heat map
+# PLOT: Grid heat map of relative values
 ##########################
 # Make labeled, legend-free versions of each plot
-gg_density_lab <- gg_heatmap_density +
+gg_density_lab_relative <- gg_heatmap_density_relative +
   labs(title = "Network density", fill = NULL) +
   theme_ctokita() +
   theme(
@@ -178,7 +188,7 @@ gg_density_lab <- gg_heatmap_density +
     panel.border = element_rect(linewidth = 0.3)
   )
 
-gg_diameter_lab <- gg_heatmap_diameter +
+gg_diameter_lab_relative <- gg_heatmap_diameter_relative +
   labs(title = "Network diameter", fill = NULL) +
   theme_ctokita() +
   theme(
@@ -187,7 +197,7 @@ gg_diameter_lab <- gg_heatmap_diameter +
     panel.border = element_rect(linewidth = 0.3)
   )
 
-gg_clustering_lab <- gg_heatmap_clustering +
+gg_clustering_lab_relative <- gg_heatmap_clustering_relative +
   labs(title = "Clustering coefficient", fill = NULL) +
   theme_ctokita() +
   theme(
@@ -196,7 +206,7 @@ gg_clustering_lab <- gg_heatmap_clustering +
     panel.border = element_rect(linewidth = 0.3)
   )
 
-gg_modularity_lab <- gg_heatmap_modularity +
+gg_modularity_lab_relative <- gg_heatmap_modularity_relative +
   labs(title = "Modularity", fill = NULL) +
   theme_ctokita() +
   theme(
@@ -205,7 +215,7 @@ gg_modularity_lab <- gg_heatmap_modularity +
     panel.border = element_rect(linewidth = 0.3)
   )
 
-gg_path_lab <- gg_heatmap_path +
+gg_path_lab_relative <- gg_heatmap_path_relative +
   labs(title = "Avg. Shortest Path", fill = NULL) +
   theme_ctokita() +
   theme(
@@ -214,7 +224,7 @@ gg_path_lab <- gg_heatmap_path +
     panel.border = element_rect(linewidth = 0.3)
   )
 
-gg_assort_lab <- gg_heatmap_assortativity +
+gg_assort_lab_relative <- gg_heatmap_assortativity_relative +
   labs(title = "Assortativity", fill = NULL) +
   theme_ctokita() +
   theme(
@@ -224,10 +234,11 @@ gg_assort_lab <- gg_heatmap_assortativity +
   )
 
 # Arrange into a separate grid plot (no color bars)
-gg_heatmap_grid <-
-  (gg_density_lab + gg_diameter_lab + gg_path_lab +
-     gg_clustering_lab + gg_modularity_lab + gg_assort_lab) +
+gg_heatmap_grid_relative <-
+  (gg_density_lab_relative + gg_diameter_lab_relative + gg_path_lab_relative +
+     gg_clustering_lab_relative + gg_modularity_lab_relative + gg_assort_lab_relative) +
   plot_layout(ncol = 3)
 
-gg_heatmap_grid
-ggsave(gg_heatmap_grid, filename = 'output/full_parameter_sweep_plot.pdf', width=180, height=100, units='mm')
+gg_heatmap_grid_relative
+ggsave(gg_heatmap_grid_relative, filename = 'output/full_parameter_sweep_plot_relative.pdf', width=180, height=100, units='mm')
+
