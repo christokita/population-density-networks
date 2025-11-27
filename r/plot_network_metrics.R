@@ -348,7 +348,7 @@ gg_density_sweep_grid
 ggsave(
   gg_density_sweep_grid,
   filename = 'output/population_density_sweep.pdf',
-  width    = 180,
+  width    = 160,
   height   = 90,
   units    = 'mm',
   dpi      = 400

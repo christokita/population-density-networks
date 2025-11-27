@@ -15,9 +15,8 @@ source("_plot_themes/theme_ctokita.R")
 ##########################
 # Define plot features
 ##########################
-heat_map_pal <- c('#fff7fb','#ece7f2','#d0d1e6','#a6bddb','#74a9cf','#3690c0','#0570b0','#045a8d','#023858')
-heat_map_pal <-  rocket(9)
-
+heat_map_pal <- c('#000000','#f7f7f7', '#F2AF29')
+heat_map_pal <- c('#084C61','#ffffff', '#E3B505')
 
 ##########################
 # Load data
@@ -37,13 +36,34 @@ paramter_combination_results <-
 # PLOT: Heat maps of relative network metrics (within social capacity)
 ##########################
 # Custom function to plot the metric of choice
-plot_relative_heat_map <- function(data, metric_name, metric_label, pal) {
+plot_relative_heat_map <- function(
+    data,
+    metric_name,
+    metric_label,
+    pal,
+    pal_limits = c(-0.5, 0.5),
+    pal_breaks = seq(-0.5, 0.5, 0.5)
+  ) {
   # Grab metric
-  data$metric <- data[[metric_name]]
-  data <- 
-    data %>% 
-    group_by(k_cap_mean) %>% 
-    mutate(relative_metric = (metric - min(metric)) / (max(metric) - min(metric)))
+  data <-
+    data %>%
+    mutate(metric = .data[[metric_name]]) %>%
+    group_by(k_cap_mean) %>%
+    arrange(population_density, .by_group = TRUE) %>%
+    mutate(
+      baseline = first(metric),  # lowest density in that row
+      relative_metric = (metric - baseline) / baseline
+    ) %>%
+    ungroup()
+  
+  # data <- data %>%
+  #   mutate(metric = .data[[metric_name]]) %>%
+  #   group_by(k_cap_mean) %>%
+  #   mutate(
+  #     baseline = metric[population_density == 1],
+  #     relative_metric = (metric - baseline) / baseline
+  #   ) %>%
+  #   ungroup()
   
   # Create plot
   gg_heatmap <-
@@ -59,16 +79,18 @@ plot_relative_heat_map <- function(data, metric_name, metric_label, pal) {
       expand = c(0, 0)
     ) +
     scale_fill_gradientn(
-      name = paste0('Relative\n', metric_label),,
+      name = paste0('Relative\n', metric_label),
       colors = pal,
-      # limits = c(0, 1),
-      # breaks = c(0, 1)
+      limits = pal_limits,
+      breaks = pal_breaks,
+      oob = squish
     ) +
     scale_color_gradientn(
       name = paste0('Relative\n', metric_label),
       colors = pal,
-      # limits = c(0, 1),
-      # breaks = c(0, 1)
+      limits = pal_limits,
+      breaks = pal_breaks,
+      oob = squish
     ) +
     labs(
       x = "Population density",
@@ -89,7 +111,9 @@ gg_heatmap_density_relative <- plot_relative_heat_map(
   data = paramter_combination_results,
   metric_name = 'network_density',
   metric_label = 'network density',
-  pal = heat_map_pal
+  pal = heat_map_pal,
+  # pal_limits = c(-0.15, 0.15),
+  # pal_breaks = seq(-0.15, 0.15, 0.15)
 )
 gg_heatmap_density_relative
 ggsave(
@@ -104,7 +128,9 @@ gg_heatmap_diameter_relative <- plot_relative_heat_map(
   data = paramter_combination_results,
   metric_name = 'network_diameter',
   metric_label = 'network diameter',
-  pal = heat_map_pal
+  pal = heat_map_pal,
+  # pal_limits = c(-0.2, 0.2),
+  # pal_breaks = seq(-0.2, 0.2, 0.1)
 )
 gg_heatmap_diameter_relative
 ggsave(
@@ -119,7 +145,9 @@ gg_heatmap_path_relative <- plot_relative_heat_map(
   data = paramter_combination_results,
   metric_name = 'network_avg_shortest_path',
   metric_label = 'shortest path',
-  pal = heat_map_pal
+  pal = heat_map_pal,
+  # pal_limits = c(-0.1, 0.1),
+  # pal_breaks = seq(-0.1, 0.1, 0.1)
 )
 gg_heatmap_path_relative
 ggsave(
@@ -134,7 +162,9 @@ gg_heatmap_clustering_relative <- plot_relative_heat_map(
   data = paramter_combination_results,
   metric_name = 'network_clustering_coef',
   metric_label = 'clustering',
-  pal = heat_map_pal
+  pal = heat_map_pal,
+  # pal_limits = c(-0.8, 0.8),
+  # pal_breaks = seq(-0.8, 0.8, 0.8)
 )
 gg_heatmap_clustering_relative
 ggsave(
@@ -149,7 +179,9 @@ gg_heatmap_modularity_relative <- plot_relative_heat_map(
   data = paramter_combination_results,
   metric_name = 'network_modularity',
   metric_label = 'modularity',
-  pal = heat_map_pal
+  pal = heat_map_pal,
+  # pal_limits = c(-0.6, 0.6),
+  # pal_breaks = seq(-0.6, 0.6, 0.6)
 )
 gg_heatmap_modularity_relative
 ggsave(
@@ -240,5 +272,11 @@ gg_heatmap_grid_relative <-
   plot_layout(ncol = 3)
 
 gg_heatmap_grid_relative
-ggsave(gg_heatmap_grid_relative, filename = 'output/full_parameter_sweep_plot_relative.pdf', width=180, height=100, units='mm')
+ggsave(
+  gg_heatmap_grid_relative,
+  filename = 'output/full_parameter_sweep_plot_relative.pdf',
+  width=160,
+  height=100,
+  units='mm'
+)
 
