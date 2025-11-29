@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from scipy import spatial
 from tqdm import trange
+from typing import Dict, Any
 
 
 class NetworkFormationModel:
@@ -157,6 +158,65 @@ class NetworkFormationModel:
     #             ):
     #                 self.social_network.loc[i, j] = 1
     #                 self.social_network.loc[j, i] = 1
+
+
+def run_single_simulation(
+    density: float, 
+    replicate: int, 
+    n: int, 
+    k_cap_mean: float, 
+    k_cap_sd: float,
+    radius: float,
+    simulation_rounds: int,
+    return_network: bool = False
+) -> Dict[str, Any]:
+    """
+    Run a single simulation of a model and return results as a dictionary.
+
+    Parameters
+    ----------
+    density :               desired population density.
+    replicate :             replicate number.
+    n :                     number of individuals.
+    k_cap_mean :            average maximum degree limit.
+    k_cap_sd :              standard deviation of maximum degree limit.
+    radius :                maximum distance for social connection formation
+    simulation_rounds :     number of rounds to run the simulation.
+    return_network :        whether to return the social network as a pandas DataFrame. Default is False.
+
+    Returns
+    -------
+    Dictionary containing the results of the simulation.
+    """
+    # Initialize model
+    model_run = NetworkFormationModel(
+        n=n,
+        k_cap_mean=k_cap_mean,
+        k_cap_sd=k_cap_sd,
+        radius=radius,
+    )
+    model_run.set_up_world(density=density)
+    
+    # Run simulation
+    model_run.create_social_network(rounds=simulation_rounds, show_progress=False)
+    
+    # Analyze network structure
+    network_structure = analyze_network_structure(model_run.social_network)
+    
+    # Create result dictionary
+    result_dict = {
+        'n': n,
+        'k_cap_mean': k_cap_mean,
+        'k_cap_sd': k_cap_sd,
+        'radius': radius,
+        'simulation_rounds': simulation_rounds,
+        'population_density': density,
+        'replicate': replicate,
+    }
+    result_dict.update(network_structure.to_dict())
+    if return_network:
+        result_dict['social_network'] = model_run.social_network
+    return result_dict
 
 
 def analyze_network_structure(network: pd.DataFrame) -> pd.Series:
