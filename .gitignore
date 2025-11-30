@@ -172,4 +172,4 @@ cython_debug/
 .Renviron.local.Rprofile.local
 
 # Misc
-.DS_Store
+*.DS_Store
