@@ -20,6 +20,7 @@ heat_map_pal <- c('#fff7fb','#ece7f2','#d0d1e6','#a6bddb','#74a9cf','#3690c0','#
 heat_map_pal <-  rocket(9)
 plot_pal <- heat_map_pal[5]
 
+
 ##########################
 # Load data
 ##########################
