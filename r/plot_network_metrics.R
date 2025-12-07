@@ -16,7 +16,6 @@ source("_plot_themes/theme_ctokita.R")
 ##########################
 # Define plot features
 ##########################
-heat_map_pal <- c('#fff7fb','#ece7f2','#d0d1e6','#a6bddb','#74a9cf','#3690c0','#0570b0','#045a8d','#023858')
 heat_map_pal <-  rocket(9)
 plot_pal <- heat_map_pal[5]
 
@@ -175,7 +174,8 @@ gg_density_lab <- gg_heatmap_density +
   labs(title = "Network density", fill = NULL) +
   theme_ctokita() +
   theme(
-    legend.position = "none",
+    legend.title = element_blank(),
+    legend.margin = margin(l=-5),
     axis.line = element_blank(),
     panel.border = element_rect(linewidth = 0.3)
   )
@@ -184,7 +184,8 @@ gg_diameter_lab <- gg_heatmap_diameter +
   labs(title = "Network diameter", fill = NULL) +
   theme_ctokita() +
   theme(
-    legend.position = "none",
+    legend.title = element_blank(),
+    legend.margin = margin(l=-10),
     axis.line = element_blank(),
     panel.border = element_rect(linewidth = 0.3)
   )
@@ -193,7 +194,8 @@ gg_clustering_lab <- gg_heatmap_clustering +
   labs(title = "Clustering coefficient", fill = NULL) +
   theme_ctokita() +
   theme(
-    legend.position = "none",
+    legend.title = element_blank(),
+    legend.margin = margin(l=-5),
     axis.line = element_blank(),
     panel.border = element_rect(linewidth = 0.3)
   )
@@ -202,7 +204,8 @@ gg_modularity_lab <- gg_heatmap_modularity +
   labs(title = "Modularity", fill = NULL) +
   theme_ctokita() +
   theme(
-    legend.position = "none",
+    legend.title = element_blank(),
+    legend.margin = margin(l=-5),
     axis.line = element_blank(),
     panel.border = element_rect(linewidth = 0.3)
   )
@@ -211,7 +214,8 @@ gg_path_lab <- gg_heatmap_path +
   labs(title = "Avg. Shortest Path", fill = NULL) +
   theme_ctokita() +
   theme(
-    legend.position = "none",
+    legend.title = element_blank(),
+    legend.margin = margin(l=-20),
     axis.line = element_blank(),
     panel.border = element_rect(linewidth = 0.3)
   )
@@ -220,7 +224,8 @@ gg_assort_lab <- gg_heatmap_assortativity +
   labs(title = "Assortativity", fill = NULL) +
   theme_ctokita() +
   theme(
-    legend.position = "none",
+    legend.title = element_blank(),
+    legend.margin = margin(l=-5),
     axis.line = element_blank(),
     panel.border = element_rect(linewidth = 0.3)
   )

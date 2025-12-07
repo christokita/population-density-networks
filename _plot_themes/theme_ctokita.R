@@ -9,15 +9,15 @@ library(ggplot2)
 ####################
 # My preferred theme
 ####################
-theme_ctokita <- function(base_font_size = 6, base_font_color = "black", base_font_family = "Helvetica") {
-  list(
+theme_ctokita <- function(base_font_size = 6, base_font_color = "black", base_font_family = "Helvetica", color_bar = TRUE) {
+  return_list <- list(
     theme_classic() +
     theme(
       # Axis settings
       axis.text       = element_text(size = base_font_size, color = base_font_color, family = base_font_family),
       axis.title      = element_text(size = base_font_size+1, color = base_font_color, family = base_font_family),
-      axis.ticks      = element_line(size = 0.3, color = base_font_color),
-      axis.line       = element_line(size = 0.3),
+      axis.ticks      = element_line(linewidth = 0.3, color = base_font_color),
+      axis.line       = element_line(linewidth = 0.3),
       
       # Title settings
       plot.title = element_text(size = base_font_size+2, color = base_font_color, family = base_font_family, face = 'bold', hjust = 0.5, margin = margin(b = 2)),
@@ -56,5 +56,12 @@ theme_ctokita <- function(base_font_size = 6, base_font_color = "black", base_fo
       )
     )
   )
+  
+  # Return theme depending on condition of plot
+  if (color_bar == FALSE) {
+    return_list[1]
+  } else {
+    return_list
+  }
 }
 

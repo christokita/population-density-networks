@@ -62,7 +62,7 @@ gg_degree_dist <- ggplot(data = degree_data, aes(x = degree, fill = population_d
   geom_histogram(
     aes(y = after_stat(count / sum(count))),
     breaks = seq(0, 200, 2),
-    alpha = 0.4,
+    alpha = 0.25,
     position = "identity",
     colour = NA,
     width = 2
@@ -80,7 +80,8 @@ gg_degree_dist <- ggplot(data = degree_data, aes(x = degree, fill = population_d
     expand = c(0 ,0)
   ) +
   scale_x_continuous(
-    limits = c(0, 200),
+    limits = c(0, 150),
+    breaks = seq(0, 200, 25),
     expand = c(0, 0),
   ) +
   labs(
@@ -95,9 +96,9 @@ gg_degree_dist <- ggplot(data = degree_data, aes(x = degree, fill = population_d
     name = "Population density",
     values = c("gray40", plot_pal)
   ) +
-  theme_ctokita()[1] +
+  theme_ctokita(color_bar = FALSE) +
   theme(
-    aspect.ratio = 0.33,
+    aspect.ratio = NULL,
     legend.position = c(0.9, 0.9)
   )
 
