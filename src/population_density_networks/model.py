@@ -108,56 +108,6 @@ class NetworkFormationModel:
                 ):
                     self.social_network.loc[i, j] = 1
                     self.social_network.loc[j, i] = 1
-            
-    # def create_social_network(self, rounds: int, show_progress: bool = True):
-    #     """
-    #     """
-    #     # Calculate distances between all individuals
-    #     distance_matrix = spatial.distance_matrix(
-    #         self.individuals[['x', 'y']].values,
-    #         self.individuals[['x', 'y']].values,
-    #     )
-        
-    #     # Loop through individuals, creating edges
-    #     for _ in trange(rounds, disable=not show_progress, desc="Forming social network"):
-            
-    #         # Pick focal individual
-    #         i = np.random.choice(np.arange(self.n))
-            
-    #         # Only consider connection formation if agent has capacity
-    #         if self.social_network.iloc[i, :].sum() < self.k_limit[i]:
-                
-    #             # Get degree of all individuals and neighborhood
-    #             k = self.social_network.sum(axis=0).values
-    #             neighborhood = self.social_network.iloc[i, :].values
-                
-    #             # Build local candidate set individuals in radius
-    #             in_radius= distance_matrix[i, :] < self.r
-    #             in_radius[i] = False  # exclude self
-    #             candidates = np.where(
-    #                 in_radius & 
-    #                 (neighborhood == 0) & 
-    #                 (k < self.k_limit)
-    #             )[0]
-                
-    #             # Skip if no eligible candidates
-    #             if candidates.size == 0:
-    #                 continue 
-                
-    #             # Preferential attachment probability
-    #             w = k[candidates] + self.epsilon
-    #             p = w / w.sum()
-                
-    #             # Draw partner
-    #             j = np.random.choice(candidates, p=p)
-                
-    #             # Add social tie if possible
-    #             if (
-    #                     self.social_network.iloc[i, j] == 0 and
-    #                     self.social_network.iloc[j, :].sum() < self.k_limit[j]
-    #             ):
-    #                 self.social_network.loc[i, j] = 1
-    #                 self.social_network.loc[j, i] = 1
 
 
 def run_single_simulation(
