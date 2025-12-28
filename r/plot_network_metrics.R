@@ -290,6 +290,7 @@ plot_density_sweep<- function(data, metric_name, metric_label, pal) {
     scale_y_continuous(
       expand = c(0, 0)
     ) +
+    coord_cartesian(clip = "off") +
     labs(
       x = "Population density",
       y = metric_label
