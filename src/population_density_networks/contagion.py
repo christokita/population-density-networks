@@ -38,6 +38,7 @@ class ContagionModel(ABC):
             'time': [0],
             'susceptible': [np.sum(self.individual_states == 0)],
             'infected': [np.sum(self.individual_states == 1)],
+            'pct_infected': [np.sum(self.individual_states == 1) / network.shape[0]],
         })
 
     @abstractmethod
@@ -106,6 +107,7 @@ class SimpleContagionModel(ContagionModel):
                 'time': [t],
                 'susceptible': [np.sum(self.individual_states == 0)],
                 'infected': [np.sum(self.individual_states == 1)],
+                'pct_infected': [np.sum(self.individual_states == 1) / self.network.shape[0]],
             })
             self.state_time_series = pd.concat([self.state_time_series, time_step_states], ignore_index=True)
         
@@ -165,6 +167,7 @@ class ComplexContagionModel(ContagionModel):
                 'time': [t],
                 'susceptible': [np.sum(self.individual_states == 0)],
                 'infected': [np.sum(self.individual_states == 1)],
+                'pct_infected': [np.sum(self.individual_states == 1) / self.network.shape[0]],
             })
             self.state_time_series = pd.concat([self.state_time_series, time_step_states], ignore_index=True)
 

@@ -14,8 +14,13 @@ source("_plot_themes/theme_ctokita.R")
 ##########################
 # Define plot features
 ##########################
-heat_map_pal <-  rocket(9)
-plot_pal <- heat_map_pal[5]
+qual_pal <- mako(9)
+low_pal <- qual_pal[7]
+high_pal <- qual_pal[4]
+
+# Low density network color pal
+lowdens_pal <- mako(9)[2:8]
+highdens_pal <- mako(8)[2:7]
 
 
 ##########################
@@ -90,11 +95,11 @@ gg_degree_dist <- ggplot(data = degree_data, aes(x = degree, fill = population_d
   ) +
   scale_fill_manual(
     name = "Population density",
-    values = c("gray40", plot_pal)
+    values = c(low_pal, high_pal)
   ) +
   scale_color_manual(
     name = "Population density",
-    values = c("gray40", plot_pal)
+    values = c(low_pal, high_pal)
   ) +
   theme_ctokita(color_bar = FALSE) +
   theme(

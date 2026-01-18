@@ -20,15 +20,42 @@ source("_plot_themes/theme_ctokita.R")
 heat_map_pal <-  rocket(9)
 plot_pal <- heat_map_pal[5]
 
+plot_pal <- "#96939B"
+
+qual_pal <- mako(9)
+low_pal <- qual_pal[7]
+high_pal <- qual_pal[4]
+
 
 ##########################
 # Load contagion simulation data
 ##########################
+# Contagion summary data
 complex_contagion_data <- read.csv('data_derived/contagion_complex_results.csv') %>% 
   mutate(reached_majority_spread = as.logical(reached_majority_spread))
 simple_contagion_data <- read.csv('data_derived/contagion_simple_results.csv') %>% 
   mutate(reached_majority_spread = as.logical(reached_majority_spread))
 
+# Example contagion timeseries data
+simple_contagion_timeseries <- read.csv('data_derived/contagion_timeseries_simple.csv') %>% 
+  mutate(
+    simulation_id = paste(population_density, network_replicate, contagion_replicate, sep = "_"),
+    network_id = paste(population_density, network_replicate, sep = "_")
+  ) %>% 
+  mutate(
+    population_density = gsub("1e-04", "0.0001", population_density),
+    population_density = gsub("10000", "10,000", population_density),
+  )
+
+complex_contagion_timeseries <- read.csv('data_derived/contagion_timeseries_complex.csv') %>% 
+  mutate(
+    simulation_id = paste(population_density, network_replicate, contagion_replicate, sep = "_"),
+    network_id = paste(population_density, network_replicate, sep = "_")
+  ) %>% 
+  mutate(
+    population_density = gsub("1e-04", "0.0001", population_density),
+    population_density = gsub("10000", "10,000", population_density),
+  )
 
 ##########################
 # Assess within vs between network variation
@@ -337,3 +364,87 @@ ggsave(
   units = 'mm',
   dpi = 400
 )
+
+
+##########################
+# PLOT: Example timeseries of contagion spread
+##########################
+# Simple contagion
+averaged_simple_timeseries <- simple_contagion_timeseries %>% 
+  group_by(network_id, population_density, network_replicate, time) %>% 
+  summarise(pct_infected = mean(pct_infected))
+
+gg_timeseries_simple <- ggplot(averaged_simple_timeseries, aes(x = time, y = pct_infected, group = network_id, color = population_density)) +
+  geom_line(linewidth = 0.3, alpha = 0.2) +
+  scale_x_continuous(
+    limits = c(0, 50),
+    expand = c(0, 0)
+  ) +
+  scale_y_continuous(
+    limits = c(0, 1),
+    expand = c(0, 0)
+  ) +
+  scale_color_manual(
+    name = "Population\ndensity",
+    values = c(low_pal, high_pal)
+  ) +
+  labs(
+    x = "Time step",
+    y = "Population infected (%)"
+  ) +
+  theme_ctokita(color_bar = FALSE) +
+  theme(
+    legend.position = c(0.8, 0.25),
+    aspect.ratio = 0.5
+  )
+
+gg_timeseries_simple
+ggsave(
+  gg_timeseries_simple,
+  filename = 'output/contagion_simple_timeseries.pdf',
+  width = 90,
+  height = 45,
+  units = 'mm',
+  dpi = 400
+)
+
+# Complex contagion
+averaged_complex_timeseries <- complex_contagion_timeseries %>% 
+  group_by(network_id, population_density, network_replicate, time) %>% 
+  summarise(pct_infected = mean(pct_infected))
+
+gg_timeseries_complex <- ggplot(averaged_complex_timeseries, aes(x = time, y = pct_infected, group = network_id, color = population_density)) +
+  geom_line(linewidth = 0.3, alpha = 0.2) +
+  scale_x_continuous(
+    limits = c(0, 50),
+    expand = c(0, 0)
+  ) +
+  scale_y_continuous(
+    limits = c(0, 0.701),
+    breaks = seq(0, 1, 0.1),
+    expand = c(0, 0)
+  ) +
+  scale_color_manual(
+    name = "Population\ndensity",
+    values = c(low_pal, high_pal)
+  ) +
+  labs(
+    x = "Time step",
+    y = "Population infected (%)"
+  ) +
+  theme_ctokita(color_bar = FALSE) +
+  theme(
+    legend.position = c(0.8, 0.25),
+    aspect.ratio = 0.5,
+  )
+
+gg_timeseries_complex
+ggsave(
+  gg_timeseries_complex,
+  filename = 'output/contagion_complex_timeseries.pdf',
+  width = 90,
+  height = 45,
+  units = 'mm',
+  dpi = 400
+)
+
