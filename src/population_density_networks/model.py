@@ -60,7 +60,7 @@ class NetworkFormationModel:
         D = math.sqrt(self.n / density)
         
         
-        # Place individual on (torus) grid
+        # Place individuals on open plane
         self.individuals['x'] = np.random.uniform(low=0, high=D, size=self.n)
         self.individuals['y'] = np.random.uniform(low=0, high=D, size=self.n)
         
