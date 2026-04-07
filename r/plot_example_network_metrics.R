@@ -111,7 +111,7 @@ gg_degree_dist
 ggsave(
   gg_degree_dist,
   filename = 'output/example_degree_distribution.pdf',
-  width = 135, height = 45, units = 'mm',
+  width = 90, height = 45, units = 'mm',
   dpi = 400,
 )
 

@@ -347,16 +347,16 @@ gg_assortativity <- plot_density_sweep(
 # PLOT: Grid of density-sweep metrics
 ##########################
 gg_density_sweep_grid <-
-  (gg_density + gg_diameter + gg_shortest_path +
+  (gg_density + gg_shortest_path + gg_diameter +
      gg_clustering + gg_modularity + gg_assortativity) +
-  plot_layout(ncol = 3)
+  plot_layout(ncol = 2)
 
 gg_density_sweep_grid
 ggsave(
   gg_density_sweep_grid,
   filename = 'output/population_density_sweep.pdf',
-  width    = 160,
-  height   = 90,
+  width    = 90,
+  height   = 135,
   units    = 'mm',
   dpi      = 400
 )
