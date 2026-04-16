@@ -59,8 +59,9 @@ plot_relative_heat_map <- function(
   # data <- data %>%
   #   mutate(metric = .data[[metric_name]]) %>%
   #   group_by(k_cap_mean) %>%
+  #   arrange(population_density, .by_group = TRUE) %>%
   #   mutate(
-  #     baseline = metric[population_density == 1],
+  #     baseline = metric[which.min(abs(population_density - 1))],  # density closest to 10^0
   #     relative_metric = (metric - baseline) / baseline
   #   ) %>%
   #   ungroup()
