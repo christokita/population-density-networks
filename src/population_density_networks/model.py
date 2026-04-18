@@ -166,6 +166,9 @@ def run_single_simulation(
     result_dict.update(network_structure.to_dict())
     if return_network:
         result_dict['social_network'] = model_run.social_network
+        node_attrs = model_run.individuals.copy()  # id, x, y
+        node_attrs['k_limit'] = model_run.k_limit
+        result_dict['node_attributes'] = node_attrs
     return result_dict
 
 
