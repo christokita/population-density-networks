@@ -370,12 +370,26 @@ ggsave(
 # PLOT: Example timeseries of contagion spread
 ##########################
 # Simple contagion
-averaged_simple_timeseries <- simple_contagion_timeseries %>% 
+averaged_network_simple_timeseries <- simple_contagion_timeseries %>% 
   group_by(network_id, population_density, network_replicate, time) %>% 
   summarise(pct_infected = mean(pct_infected))
 
-gg_timeseries_simple <- ggplot(averaged_simple_timeseries, aes(x = time, y = pct_infected, group = network_id, color = population_density)) +
-  geom_line(linewidth = 0.3, alpha = 0.2) +
+overall_average_simple <- simple_contagion_timeseries %>% 
+  group_by(population_density, time) %>% 
+  summarise(pct_infected = mean(pct_infected))
+
+gg_timeseries_simple <- ggplot() +
+  geom_line(
+    data = averaged_network_simple_timeseries, 
+    aes(x = time, y = pct_infected, group = network_id, color = population_density),
+    linewidth = 0.15,
+    alpha = 0.15
+    ) +
+  geom_line(
+    data = overall_average_simple,
+    aes(x = time, y = pct_infected, color = population_density),
+    linewidth = 0.6
+  ) +
   scale_x_continuous(
     limits = c(0, 50),
     expand = c(0, 0)
@@ -409,12 +423,26 @@ ggsave(
 )
 
 # Complex contagion
-averaged_complex_timeseries <- complex_contagion_timeseries %>% 
+averaged_network_complex_timeseries <- complex_contagion_timeseries %>% 
   group_by(network_id, population_density, network_replicate, time) %>% 
   summarise(pct_infected = mean(pct_infected))
 
-gg_timeseries_complex <- ggplot(averaged_complex_timeseries, aes(x = time, y = pct_infected, group = network_id, color = population_density)) +
-  geom_line(linewidth = 0.3, alpha = 0.2) +
+overall_average_complex <- complex_contagion_timeseries %>% 
+  group_by(population_density, time) %>% 
+  summarise(pct_infected = mean(pct_infected))
+
+gg_timeseries_complex <- ggplot() +
+  geom_line(
+    data = averaged_network_complex_timeseries, 
+    aes(x = time, y = pct_infected, group = network_id, color = population_density),
+    linewidth = 0.15,
+    alpha = 0.15
+  ) +
+  geom_line(
+    data = overall_average_complex,
+    aes(x = time, y = pct_infected, color = population_density),
+    linewidth = 0.6
+  ) +
   scale_x_continuous(
     limits = c(0, 50),
     expand = c(0, 0)

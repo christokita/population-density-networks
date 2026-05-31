@@ -28,42 +28,51 @@ highdens_pal <- mako(8)[2:7]
 ##########################
 # Get files
 data_dir <- "data_derived/full_social_networks/"
-data_files <- list.files(data_dir)
+edgelist_files <- list.files(data_dir, pattern = "^edgelist-")
 
-# Loop through example networks 
+# Loop through example networks
 degree_data <- data.frame()
-for (file in data_files) {
-  
-  # Grab density
-  density <- as.numeric( gsub(".*density_([\\.0-9]+)-.*", "\\1", file, perl = TRUE) )
-  
-  # Load
-  network <- read.csv(paste0(data_dir, file), header = TRUE, row.names = 1)
-  names(network) <- seq(1:length(network)) - 1
-  
-  # Get degree
-  degrees <- colSums(network)
+for (file in edgelist_files) {
+
+  # Grab density and replicate
+  density <- as.numeric( gsub(".*density_([0-9.]+)-.*", "\\1", file, perl = TRUE) )
+  replicate <- as.numeric( gsub(".*replicate_([0-9]+)\\.csv", "\\1", file, perl = TRUE) )
+
+  # Load edgelist and nodelist
+  edgelist <- read.csv(paste0(data_dir, file), header = TRUE)
+  nodelist_file <- gsub("^edgelist", "nodelist", file)
+  nodelist <- read.csv(paste0(data_dir, nodelist_file), header = TRUE)
+
+  # Calculate degree from edgelist (times each node appears as source or target)
+  edge_counts <- table(c(edgelist$source, edgelist$target))
+  degrees <- as.integer(edge_counts[match(nodelist$id, names(edge_counts))])
+  degrees[is.na(degrees)] <- 0L
+
   degrees_df <- data.frame(
     population_density = density,
-    node = names(degrees),
+    replicate = replicate,
+    node = nodelist$id,
+    location_x = nodelist$x,
+    location_y = nodelist$y,
     degree = degrees
   )
-  
+
   # Add to dataframe
   degree_data <- rbind(degree_data, degrees_df)
-  rm(degrees, degrees_df)
+  rm(edgelist, nodelist, edge_counts, degrees, degrees_df)
 }
 
 # Make degree character for plotting
-degree_data$population_density <- gsub("1e-04", "0.0001", degree_data$population_density)
-degree_data$population_density <- gsub("10000", "10,000", degree_data$population_density)
+degree_data$population_density_label <- degree_data$population_density
+degree_data$population_density_label <- gsub("1e-04", "0.0001", degree_data$population_density_label)
+degree_data$population_density_label <- gsub("10000", "10,000", degree_data$population_density_label)
 
 
 
 ##########################
 # Plot degree distribution
 ##########################
-gg_degree_dist <- ggplot(data = degree_data, aes(x = degree, fill = population_density, color = population_density)) +
+gg_degree_dist <- ggplot(data = degree_data %>% filter(population_density_label %in% c("0.0001", "10,000")), aes(x = degree, fill = population_density_label, color = population_density_label)) +
   geom_histogram(
     aes(y = after_stat(count / sum(count))),
     breaks = seq(0, 200, 2),

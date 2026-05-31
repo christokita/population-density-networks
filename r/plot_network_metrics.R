@@ -7,6 +7,7 @@
 require(dplyr)
 require(tidyr)
 require(ggplot2)
+require(igraph)
 require(scales)
 require(viridisLite)
 require(patchwork)
@@ -248,6 +249,117 @@ ggsave(
 
 
 ##########################
+# PLOT: Curves of network metrics for select social capacity
+##########################
+# Custom function to plot the metric of choice
+plot_metric_curves <- function(data, metric_name, metric_label, pal) {
+  # Grab metric
+  data$metric <- data[[metric_name]]
+  
+  # Create plot
+  gg_curveplot <-
+    ggplot(data, aes(x=population_density, y=metric, color=k_cap_mean, group=k_cap_mean)) +
+    geom_line(linewidth=0.6) +
+    geom_vline(xintercept = 1, linewidth = 0.3, linetype = 'dashed') +
+    scale_x_log10(
+      breaks = 10**seq(-4, 4, 2),
+      expand = c(0, 0),
+      labels = trans_format("log10", math_format(10^.x))
+    ) +
+    scale_color_gradientn(
+      name = expression(atop('Mean social', 'capacity ('*mu[c]*')')),
+      colors = pal,
+      limits = c(0, 100)
+    ) +
+    labs(
+      x = "Population density",
+      y = metric_label
+    ) +
+    theme_ctokita() +
+    theme(
+      axis.line = element_blank(),
+      panel.border = element_rect(linewidth = 0.3),
+    )
+  return(gg_curveplot)
+}
+
+# Network density
+gg_curves_density <- plot_metric_curves(
+  data = paramter_combination_results,
+  metric_name = 'network_density',
+  metric_label = 'Network density',
+  pal = heat_map_pal
+)
+gg_curves_density
+
+# Network diameter
+gg_curves_diameter <- plot_metric_curves(
+  data = paramter_combination_results,
+  metric_name = 'network_diameter',
+  metric_label = 'Network diameter',
+  pal = heat_map_pal
+)
+gg_curves_diameter
+
+# Shortest path
+gg_curves_path <- plot_metric_curves(
+  data = paramter_combination_results,
+  metric_name = 'network_avg_shortest_path',
+  metric_label = 'Avg. shortest path',
+  pal = heat_map_pal
+)
+gg_curves_path
+
+# Clustering
+gg_curves_clustering <- plot_metric_curves(
+  data = paramter_combination_results,
+  metric_name = 'network_clustering_coef',
+  metric_label = 'Clustering coefficient',
+  pal = heat_map_pal
+)
+gg_curves_clustering
+
+# Modularity
+gg_curves_modularity <- plot_metric_curves(
+  data = paramter_combination_results,
+  metric_name = 'network_modularity',
+  metric_label = 'Modularity',
+  pal = heat_map_pal
+)
+gg_curves_modularity
+
+# Assortativity
+gg_curves_assortativity <- plot_metric_curves(
+  data = paramter_combination_results,
+  metric_name = 'network_assortativity',
+  metric_label = 'Assortativity',
+  pal = heat_map_pal
+)
+gg_curves_assortativity
+
+
+
+##########################
+# PLOT: Grid curve plots
+##########################
+# Arrange into a separate grid plot (no color bars)
+gg_curves_grid <-
+  (gg_curves_density + gg_curves_diameter + gg_curves_path +
+     gg_curves_clustering + gg_curves_modularity + gg_curves_assortativity) +
+  plot_layout(ncol = 3, guides = 'collect')
+
+gg_curves_grid
+ggsave(
+  gg_curves_grid,
+  filename = 'output/full_parameter_curves_plot.pdf',
+  width = 180,
+  height = 90,
+  units = 'mm',
+  dpi = 400
+)
+
+
+##########################
 # PLOT: Population density sweep within selected social capacity
 ##########################
 # Select simulations
@@ -347,8 +459,11 @@ gg_assortativity <- plot_density_sweep(
 # PLOT: Grid of density-sweep metrics
 ##########################
 gg_density_sweep_grid <-
-  (gg_density + gg_shortest_path + gg_diameter +
-     gg_clustering + gg_modularity + gg_assortativity) +
+  (
+    gg_density + gg_diameter +
+    gg_shortest_path + gg_clustering +
+    gg_modularity + gg_assortativity
+  ) +
   plot_layout(ncol = 2)
 
 gg_density_sweep_grid
@@ -360,3 +475,4 @@ ggsave(
   units    = 'mm',
   dpi      = 400
 )
+
