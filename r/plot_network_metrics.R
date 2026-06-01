@@ -476,3 +476,141 @@ ggsave(
   dpi      = 400
 )
 
+
+##########################
+# PLOT: Metrics under different interaction radius
+##########################
+# Select social capacity from main set
+regular_radius <- sweep_data %>% 
+  filter(k_cap_mean == 50)
+
+
+# Read in simulations of other interaction radii
+smaller_radius <- read.csv('data_derived/select_density_results_radius0.1.csv')
+larger_radius <- read.csv('data_derived/select_density_results_radius10.csv')
+
+radius_simulation_results <- 
+  regular_radius %>% 
+  rbind(smaller_radius) %>% 
+  rbind(larger_radius) %>% 
+  select(radius, k_cap_mean, population_density, network_density:network_assortativity, -network_is_connected) %>% 
+  gather('metric', 'value', -radius, -k_cap_mean, -population_density) %>% 
+  group_by(radius, k_cap_mean, population_density, metric) %>% 
+  summarise(
+    mean = mean(value),
+    sd = sd(value)
+  ) %>% 
+  arrange(metric, population_density)
+
+
+# Custom function to plot the metric of choice
+plot_density_sweep_radius <- function(data, metric_name, metric_label, pal) {
+  # Grab metric
+  data <- 
+    data %>% 
+    filter(metric == metric_name) %>% 
+    mutate(
+      lower = mean - sd,
+      upper = mean + sd,
+      radius = as.character(radius)
+    )
+  
+  # Create plot
+  gg_metric_plot <-
+    ggplot(data, aes(x=population_density, y=mean, color = radius, fill = radius, group = radius)) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), color = NA, alpha = 0.25) +
+    geom_line(linewidth = 0.6) +
+    geom_point(stroke = 0, size = 2) +
+    scale_x_log10(
+      breaks = 10**seq(-4, 4, 2),
+      expand = c(0, 0),
+      labels = trans_format("log10", math_format(10^.x))
+    ) +
+    scale_y_continuous(
+      expand = c(0, 0)
+    ) +
+    scale_color_manual(
+      name = "Interaction\nradius",
+      values = pal
+    ) +
+    scale_fill_manual(
+      name = "Interaction\nradius",
+      values = pal
+    ) +
+    coord_cartesian(clip = "off") +
+    labs(
+      x = "Population density",
+      y = metric_label
+    ) +
+    theme_ctokita() +
+    guides(
+      fill = guide_legend(),
+      color = guide_legend()
+    )
+  return(gg_metric_plot)
+}
+
+
+# Individual metric plots
+radius_pal <- c("#F6AA1C", plot_pal, "#220901")
+
+gg_density_radius <- plot_density_sweep_radius(
+  data = radius_simulation_results,
+  metric_name = 'network_density',
+  metric_label = 'Network density',
+  pal = radius_pal
+)
+
+gg_diameter_radius <- plot_density_sweep_radius(
+  data = radius_simulation_results,
+  metric_name = 'network_diameter',
+  metric_label = 'Network diameter',
+  pal = radius_pal
+)
+
+gg_shortest_path_radius <- plot_density_sweep_radius(
+  data = radius_simulation_results,
+  metric_name = 'network_avg_shortest_path',
+  metric_label = 'Avg. shortest path',
+  pal = radius_pal
+)
+
+gg_clustering_radius <- plot_density_sweep_radius(
+  data = radius_simulation_results,
+  metric_name = 'network_clustering_coef',
+  metric_label = 'Clustering coefficient',
+  pal = radius_pal
+)
+
+gg_modularity_radius <- plot_density_sweep_radius(
+  data = radius_simulation_results,
+  metric_name = 'network_modularity',
+  metric_label = 'Modularity',
+  pal = radius_pal
+)
+
+gg_assortativity_radius <- plot_density_sweep_radius(
+  data = radius_simulation_results,
+  metric_name = 'network_assortativity',
+  metric_label = 'Assortativity',
+  pal = radius_pal
+)
+
+# Plot full grid
+gg_density_radius_grid <-
+  (
+    gg_density_radius + gg_diameter_radius +
+      gg_shortest_path_radius + gg_clustering_radius +
+      gg_modularity_radius + gg_assortativity_radius
+  ) +
+  plot_layout(ncol = 2, guides = 'collect')
+
+gg_density_radius_grid
+ggsave(
+  gg_density_radius_grid,
+  filename = 'output/population_density_radius_sweep.pdf',
+  width    = 115,
+  height   = 135,
+  units    = 'mm',
+  dpi      = 400
+)
