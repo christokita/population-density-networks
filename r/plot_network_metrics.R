@@ -65,7 +65,7 @@ plot_heat_map <- function(data, metric_name, metric_label, pal) {
       colors = pal
     ) +
     labs(
-      x = "Population density",
+      x = expression("Population density, " * delta * italic(r)^2),
       y = "Avg. social capacity"
     ) +
     theme_ctokita() +
@@ -272,7 +272,7 @@ plot_metric_curves <- function(data, metric_name, metric_label, pal) {
       limits = c(0, 100)
     ) +
     labs(
-      x = "Population density",
+      x = expression("Population density, " * delta * italic(r)^2),
       y = metric_label
     ) +
     theme_ctokita() +
@@ -404,7 +404,7 @@ plot_density_sweep<- function(data, metric_name, metric_label, pal) {
     ) +
     coord_cartesian(clip = "off") +
     labs(
-      x = "Population density",
+      x = expression("Population density, " * delta * italic(r)^2),
       y = metric_label
     ) +
     theme_ctokita() 
@@ -539,7 +539,7 @@ plot_density_sweep_radius <- function(data, metric_name, metric_label, pal) {
     ) +
     coord_cartesian(clip = "off") +
     labs(
-      x = "Population density",
+      x = expression("Population density, " * delta * italic(r)^2),
       y = metric_label
     ) +
     theme_ctokita() +
