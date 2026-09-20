@@ -18,8 +18,8 @@ qual_pal <- mako(9)
 low_pal <- qual_pal[7]
 high_pal <- qual_pal[4]
 
-# Low density network color pal
-lowdens_pal <- mako(9)[2:8]
+# Gephi network color pal
+lowdens_pal <- mako(7)[2:6]
 highdens_pal <- mako(8)[2:7]
 
 

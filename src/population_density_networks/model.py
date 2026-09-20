@@ -7,6 +7,10 @@ from tqdm import trange
 from typing import Dict, Any
 
 
+# Louvain is stochastic, so the partition (and the modularity it yields) is pinned to a fixed seed
+COMMUNITY_SEED = 323
+
+
 class NetworkFormationModel:
     
     def __init__(
@@ -151,7 +155,7 @@ def run_single_simulation(
     model_run.create_social_network(rounds=simulation_rounds, show_progress=False)
     
     # Analyze network structure
-    network_structure = analyze_network_structure(model_run.social_network)
+    network_structure, community_membership = analyze_network_structure(model_run.social_network)
     
     # Create result dictionary
     result_dict = {
@@ -168,17 +172,18 @@ def run_single_simulation(
         result_dict['social_network'] = model_run.social_network
         node_attrs = model_run.individuals.copy()  # id, x, y
         node_attrs['k_limit'] = model_run.k_limit
+        node_attrs['community'] = node_attrs['id'].map(community_membership)
         result_dict['node_attributes'] = node_attrs
     return result_dict
 
 
-def analyze_network_structure(network: pd.DataFrame) -> pd.Series:
+def analyze_network_structure(network: pd.DataFrame) -> tuple[pd.Series, dict[int, int]]:
     """
     Analyze the structure of the final social network.
 
     Returns
     -------
-    Series containing key network metrics.
+    Series containing key network metrics, and a mapping of node id to community membership.
 
     """
     # Convert to netwokx graph
@@ -200,7 +205,12 @@ def analyze_network_structure(network: pd.DataFrame) -> pd.Series:
         diameter = nx.diameter(g_largest)
         largest_component_size = len(largest_cc)
     
-    return pd.Series({
+    # Detect communities with Louvain (the algorithm behind Gephi's modularity class), keeping the
+    # partition so it can be reported alongside the modularity it yields
+    communities = nx.community.louvain_communities(g, weight=None, seed=COMMUNITY_SEED)
+    membership = {node: i for i, community in enumerate(communities) for node in community}
+
+    metrics = pd.Series({
         'network_density': nx.density(g),
         'network_is_connected': is_connected,
         'network_num_components': num_components,
@@ -208,7 +218,8 @@ def analyze_network_structure(network: pd.DataFrame) -> pd.Series:
         'network_avg_shortest_path': avg_shortest_path,  # On largest component if disconnected
         'network_diameter': diameter,  # On largest component if disconnected
         'network_clustering_coef': nx.average_clustering(g),
-        'network_modularity': nx.community.modularity(g, communities=nx.community.greedy_modularity_communities(g), weight=None),
+        'network_modularity': nx.community.modularity(g, communities=communities, weight=None),
         'network_assortativity': nx.degree_assortativity_coefficient(g)
     })
+    return metrics, membership
     
