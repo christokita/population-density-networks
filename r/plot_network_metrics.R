@@ -486,8 +486,8 @@ regular_radius <- sweep_data %>%
 
 
 # Read in simulations of other interaction radii
-smaller_radius <- read.csv('data_derived/select_density_results_radius0.1.csv')
-larger_radius <- read.csv('data_derived/select_density_results_radius10.csv')
+smaller_radius <- read.csv('data_derived/sensitivity_analysis/select_density_results_radius0.1.csv')
+larger_radius <- read.csv('data_derived/sensitivity_analysis/select_density_results_radius10.csv')
 
 radius_simulation_results <- 
   regular_radius %>% 
