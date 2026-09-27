@@ -1,6 +1,6 @@
 ###################################################
 #
-# Plotting network metrics from simulations
+# Plotting supplemental network metrics from simulations
 #
 ###################################################
 
@@ -165,7 +165,7 @@ gg_distance <- ggplot(distance_binned, aes(x = bin_midpoint, y = mean_frac, colo
 
 ggsave(
   gg_distance,
-  filename = 'output/proximity_vs_density.pdf',
+  filename = 'output/suppl_network_analysis/proximity_vs_density.pdf',
   width = 65, 
   height = 45, 
   units = 'mm',
@@ -193,7 +193,7 @@ gg_proximity_popularity <- (gg_distance+theme(legend.position = 'none')) + gg_de
 gg_proximity_popularity
 ggsave(
   gg_proximity_popularity,
-  filename = 'output/proximity_vs_popularity.pdf',
+  filename = 'output/suppl_network_analysis/proximity_vs_popularity.pdf',
   width = 90, 
   height = 45, 
   units = 'mm',
@@ -334,7 +334,179 @@ gg_elite <- gg_capacity + gg_centrality + plot_layout(ncol = 2)
 gg_elite
 ggsave(
   gg_elite,
-  filename = 'output/elite_membership_predictors.pdf',
+  filename = 'output/suppl_network_analysis/elite_membership_predictors.pdf',
+  width = 105, height = 45, units = 'mm',
+  dpi = 400
+)
+
+
+##########################
+# PLOT: Rich Club Coefficient
+##########################
+# Data files
+data_dir <- "data_derived/full_social_networks/"
+edgelist_files <- list.files(data_dir, pattern = "^edgelist-")
+edgelist_files <- edgelist_files[grepl("(density_0\\.0001)-|(density_10000\\.0)-", edgelist_files)]
+
+# Function to compute the (unnormalized) rich-club coefficient across degree thresholds
+rich_club_coef <- function(g, k_values) {
+  deg <- degree(g)
+  edge_ends <- ends(g, E(g), names = FALSE)
+  edge_min_degree <- pmin(deg[edge_ends[, 1]], deg[edge_ends[, 2]]) #edge is in club at k if both ends have degree > k
+  # Counts with degree >= d (index d + 1), padded with 0 so k = max degree works
+  max_d <- max(deg)
+  n_ge <- c(rev(cumsum(rev(tabulate(deg + 1, nbins = max_d + 1)))), 0)
+  e_ge <- c(rev(cumsum(rev(tabulate(edge_min_degree + 1, nbins = max_d + 1)))), 0)
+  n_rich <- n_ge[k_values + 2] #degree > k is degree >= k + 1
+  e_rich <- e_ge[k_values + 2]
+  phi <- ifelse(n_rich > 1, 2 * e_rich / (n_rich * (n_rich - 1)), NA)
+  return(phi)
+}
+
+
+# Run calculation
+n_replicates <- 20
+n_null <- 10 #number of rewired null networks per observed network
+swaps_per_edge <- 10 #rewiring attempts = swaps_per_edge * number of edges
+min_club_size <- 10 #drop thresholds where the club is too small to be meaningful
+elite_frac <- 0.10 #club size used for the summary stat (top 10% by degree)
+replicate_counts <- list()
+set.seed(323)
+
+pb <- txtProgressBar(min = 0, max = length(edgelist_files), style = 3)
+rich_club_summary <- data.frame()
+for (file_idx in seq_along(edgelist_files)) {
+  file <- edgelist_files[file_idx]
+  
+  density <- as.numeric(gsub(".*density_([0-9.e+-]+)-.*", "\\1", file, perl = TRUE))
+  replicate <- as.numeric(gsub(".*replicate_([0-9]+)\\.csv", "\\1", file, perl = TRUE))
+  
+  density_key <- as.character(density)
+  if (is.null(replicate_counts[[density_key]])) replicate_counts[[density_key]] <- 0
+  if (replicate_counts[[density_key]] >= n_replicates) next
+  replicate_counts[[density_key]] <- replicate_counts[[density_key]] + 1
+  
+  edgelist <- read.csv(paste0(data_dir, file), header = TRUE)
+  nodelist_file <- gsub("^edgelist", "nodelist", file)
+  nodelist <- read.csv(paste0(data_dir, nodelist_file), header = TRUE)
+  
+  # Build graph (rich-club formula and swaps assume a simple graph)
+  g <- graph_from_data_frame(edgelist, directed = FALSE, vertices = nodelist)
+  stopifnot(is_simple(g))
+  node_degrees <- degree(g)
+  
+  # Observed rich-club coefficient at every degree threshold
+  k_values <- 0:max(node_degrees)
+  n_rich <- sapply(k_values, function(k) sum(node_degrees > k))
+  phi_obs <- rich_club_coef(g, k_values)
+  
+  # Degree-preserving null via double-edge swaps
+  phi_null <- matrix(NA, nrow = n_null, ncol = length(k_values))
+  for (i in 1:n_null) {
+    g_null <- rewire(g, with = keeping_degseq(loops = FALSE, niter = swaps_per_edge * ecount(g)))
+    phi_null[i, ] <- rich_club_coef(g_null, k_values)
+  }
+  null_mean <- colMeans(phi_null)
+  null_sd <- apply(phi_null, 2, sd)
+  null_q95 <- apply(phi_null, 2, quantile, probs = 0.95, na.rm = TRUE)
+  
+  rc_df <- data.frame(
+    population_density = density,
+    replicate = replicate,
+    k = k_values,
+    n_rich = n_rich,
+    frac_rich = n_rich / vcount(g),
+    phi_obs = phi_obs,
+    phi_null = null_mean,
+    rho = phi_obs / null_mean,
+    z_score = (phi_obs - null_mean) / null_sd,
+    exceeds_null = phi_obs > null_q95
+  ) %>%
+    filter(n_rich >= min_club_size)
+  
+  rich_club_summary <- rbind(rich_club_summary, rc_df)
+  rm(g, g_null, edgelist, nodelist, phi_null, rc_df)
+  setTxtProgressBar(pb, file_idx)
+}
+close(pb)
+
+# --- Average normalized coefficient across replicates at each degree threshold ---
+rich_club_avg <- rich_club_summary %>%
+  group_by(population_density, k) %>%
+  summarise(
+    n_networks = n(),
+    frac_rich = mean(frac_rich),
+    mean_rho = mean(rho, na.rm = TRUE),
+    sd_rho = sd(rho, na.rm = TRUE),
+    frac_exceeds_null = mean(exceeds_null, na.rm = TRUE),
+    .groups = 'drop'
+  ) %>%
+  filter(n_networks >= 0.5 * n_replicates) #only keep thresholds reached in most replicates
+
+# --- Summary at elite club size: smallest k where club is at most top elite_frac of nodes ---
+elite_rich_club <- rich_club_summary %>%
+  filter(frac_rich <= elite_frac) %>%
+  group_by(population_density, replicate) %>%
+  slice_min(k, n = 1, with_ties = FALSE) %>%
+  group_by(population_density) %>%
+  summarise(
+    mean_k = mean(k),
+    mean_frac_rich = mean(frac_rich),
+    mean_rho = mean(rho, na.rm = TRUE),
+    sd_rho = sd(rho, na.rm = TRUE),
+    mean_z = mean(z_score, na.rm = TRUE),
+    frac_exceeds_null = mean(exceeds_null, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+print(elite_rich_club)
+
+# --- Plotting ---
+rich_club_avg$density_factor <- factor(rich_club_avg$population_density)
+
+# Panel A: normalized rich-club coefficient vs. degree threshold
+gg_rich_club_k <- ggplot(rich_club_avg, aes(x = k, y = mean_rho, color = density_factor)) +
+  geom_hline(yintercept = 1, linetype = "dashed", linewidth = 0.3, color = "grey50") +
+  geom_point(size = 1.5, stroke = 0) +
+  scale_color_manual(
+    name = "Population\ndensity",
+    values = density_colors,
+    labels = c("0.0001", "10,000")
+  ) +
+  labs(
+    x = "Degree threshold (k)",
+    y = expression("Normalized rich-club coefficient ("*rho*")")
+  ) +
+  theme_ctokita(color_bar = FALSE) +
+  theme(legend.position = "none")
+
+# Panel B: normalized rich-club coefficient vs. fraction of population in club (comparable across densities)
+gg_rich_club_frac <- ggplot(rich_club_avg, aes(x = frac_rich, y = mean_rho, color = density_factor)) +
+  geom_hline(yintercept = 1, linetype = "dashed", linewidth = 0.3, color = "grey50") +
+  geom_vline(xintercept = elite_frac, linetype = "dotted", linewidth = 0.3, color = "grey50") +
+  geom_point(size = 1.5, stroke = 0) +
+  scale_x_log10() +
+  scale_color_manual(
+    name = "Population\ndensity",
+    values = density_colors,
+    labels = c("0.0001", "10,000")
+  ) +
+  labs(
+    x = "Fraction of population in club",
+    y = expression("Normalized rich-club coefficient ("*rho*")")
+  ) +
+  theme_ctokita(color_bar = FALSE) +
+  theme(
+    legend.position = "right",
+    legend.title = element_text(face = "bold")
+  )
+
+gg_rich_club <- gg_rich_club_k + gg_rich_club_frac + plot_layout(ncol = 2)
+
+gg_rich_club
+ggsave(
+  gg_rich_club,
+  filename = 'output/suppl_network_analysis/rich_club_coefficient.pdf',
   width = 105, height = 45, units = 'mm',
   dpi = 400
 )

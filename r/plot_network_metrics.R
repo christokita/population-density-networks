@@ -500,7 +500,12 @@ radius_simulation_results <-
     mean = mean(value),
     sd = sd(value)
   ) %>% 
-  arrange(metric, population_density)
+  arrange(metric, population_density) %>% 
+  # Normalize density
+  mutate(
+    population_density_just_delta = population_density,
+    population_density = population_density*radius**2
+  )
 
 
 # Custom function to plot the metric of choice
@@ -518,11 +523,11 @@ plot_density_sweep_radius <- function(data, metric_name, metric_label, pal) {
   # Create plot
   gg_metric_plot <-
     ggplot(data, aes(x=population_density, y=mean, color = radius, fill = radius, group = radius)) +
-    geom_ribbon(aes(ymin = lower, ymax = upper), color = NA, alpha = 0.25) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), color = NA, alpha = 0.2) +
     geom_line(linewidth = 0.6) +
     geom_point(stroke = 0, size = 2) +
     scale_x_log10(
-      breaks = 10**seq(-4, 4, 2),
+      breaks = 10**seq(-6, 6, 2),
       expand = c(0, 0),
       labels = trans_format("log10", math_format(10^.x))
     ) +
@@ -608,9 +613,64 @@ gg_density_radius_grid <-
 gg_density_radius_grid
 ggsave(
   gg_density_radius_grid,
-  filename = 'output/population_density_radius_sweep.pdf',
+  filename = 'output/suppl_network_analysis/population_density_radius_sweep.pdf',
   width    = 115,
   height   = 135,
   units    = 'mm',
   dpi      = 400
 )
+
+
+# Plot inset of just delta for one metric
+gg_inset <-
+  # Filter to just modularity
+  radius_simulation_results %>% 
+  filter(metric == 'network_clustering_coef') %>% 
+  mutate(
+    lower = mean - sd,
+    upper = mean + sd,
+    radius = as.character(radius)
+  ) %>% 
+  # Plot
+  ggplot(., aes(x=population_density_just_delta, y=mean, color=radius)) +
+  geom_line(linewidth = 0.4) +
+  geom_point(stroke = 0, size = 1.5) +
+  scale_x_log10(
+    breaks = 10**seq(-4, 4, 8
+                     ),
+    expand = c(0, 0),
+    labels = trans_format("log10", math_format(10^.x))
+  ) +
+  scale_y_continuous(
+    expand = c(0, 0),
+    breaks = seq(0, 1.0, 0.02),
+  ) +
+  scale_color_manual(
+    name = "Interaction\nradius",
+    values = radius_pal
+  ) +
+  scale_fill_manual(
+    name = "Interaction\nradius",
+    values = radius_pal
+  ) +
+  coord_cartesian(clip = "off") +
+  labs(
+    x = expression(delta),
+  ) +
+  theme_ctokita() +
+  theme(
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    legend.position = 'None'
+  )
+
+gg_inset
+ggsave(
+  gg_inset,
+  filename = 'output/suppl_network_analysis/population_density_radius_clustering_inset.pdf',
+  width    = 22,
+  height   = 22,
+  units    = 'mm',
+  dpi      = 400
+)
+
