@@ -544,7 +544,6 @@ ggsave(
 # Data files
 data_dir <- "data_derived/full_social_networks/"
 edgelist_files <- list.files(data_dir, pattern = "^edgelist-")
-edgelist_files <- edgelist_files[grepl("(density_0\\.0001)-|(density_10000\\.0)-", edgelist_files)]
 
 # Function to compute the (unnormalized) rich-club coefficient across degree thresholds
 rich_club_coef <- function(g, k_values) {
@@ -563,11 +562,11 @@ rich_club_coef <- function(g, k_values) {
 
 
 # Run calculation
-n_replicates <- 20
-n_null <- 10 #number of rewired null networks per observed network
+n_replicates <- 50
+n_null <- 25 #number of rewired null networks per observed network
 swaps_per_edge <- 10 #rewiring attempts = swaps_per_edge * number of edges
 min_club_size <- 10 #drop thresholds where the club is too small to be meaningful
-elite_frac <- 0.10 #club size used for the summary stat (top 10% by degree)
+elite_frac <- 0.1 #club size used for the summary stat (top 10% by degree)
 replicate_counts <- list()
 set.seed(323)
 
@@ -631,57 +630,37 @@ close(pb)
 # --- Average normalized coefficient across replicates at each degree threshold ---
 rich_club_avg <- rich_club_summary %>%
   group_by(population_density, k) %>%
+  filter(n() >= 0.5 * n_replicates) %>% #only keep thresholds reached in most replicates
   summarise(
     n_networks = n(),
+    # Club size (computed before frac_rich is overwritten below)
+    se_frac_rich = sd(frac_rich) / sqrt(n_networks),
     frac_rich = mean(frac_rich),
+    # Normalized rich-club coefficient
+    n_rho = sum(!is.na(rho)),
     mean_rho = mean(rho, na.rm = TRUE),
     sd_rho = sd(rho, na.rm = TRUE),
+    se_rho = sd_rho / sqrt(n_rho),
+    rho_lower = mean_rho - qt(0.975, n_rho - 1) * se_rho,
+    rho_upper = mean_rho + qt(0.975, n_rho - 1) * se_rho,
     frac_exceeds_null = mean(exceeds_null, na.rm = TRUE),
-    .groups = 'drop'
-  ) %>%
-  filter(n_networks >= 0.5 * n_replicates) #only keep thresholds reached in most replicates
-
-# --- Summary at elite club size: smallest k where club is at most top elite_frac of nodes ---
-elite_rich_club <- rich_club_summary %>%
-  filter(frac_rich <= elite_frac) %>%
-  group_by(population_density, replicate) %>%
-  slice_min(k, n = 1, with_ties = FALSE) %>%
-  group_by(population_density) %>%
-  summarise(
-    mean_k = mean(k),
-    mean_frac_rich = mean(frac_rich),
-    mean_rho = mean(rho, na.rm = TRUE),
-    sd_rho = sd(rho, na.rm = TRUE),
-    mean_z = mean(z_score, na.rm = TRUE),
-    frac_exceeds_null = mean(exceeds_null, na.rm = TRUE),
-    .groups = 'drop'
+    .groups = "drop"
   )
 
-print(elite_rich_club)
 
 # --- Plotting ---
 rich_club_avg$density_factor <- factor(rich_club_avg$population_density)
 
-# Panel A: normalized rich-club coefficient vs. degree threshold
-gg_rich_club_k <- ggplot(rich_club_avg, aes(x = k, y = mean_rho, color = density_factor)) +
-  geom_hline(yintercept = 1, linetype = "dashed", linewidth = 0.3, color = "grey50") +
-  geom_point(size = 1.5, stroke = 0) +
-  scale_color_manual(
-    name = "Population\ndensity",
-    values = density_colors,
-    labels = c("0.0001", "10,000")
-  ) +
-  labs(
-    x = "Degree threshold (k)",
-    y = expression("Normalized rich-club coefficient ("*rho*")")
-  ) +
-  theme_ctokita(color_bar = FALSE) +
-  theme(legend.position = "none")
-
-# Panel B: normalized rich-club coefficient vs. fraction of population in club (comparable across densities)
-gg_rich_club_frac <- ggplot(rich_club_avg, aes(x = frac_rich, y = mean_rho, color = density_factor)) +
+# Panel A: normalized rich-club coefficient vs. fraction of population in club (for two choice densities)
+gg_rich_club_frac <- 
+  # Filter to exemplar densities
+  rich_club_avg %>% 
+  filter(population_density %in% c(1e-4, 1e4)) %>% 
+  # Plot
+  ggplot(., aes(x = frac_rich, y = mean_rho, color = density_factor, fill = density_factor)) +
   geom_hline(yintercept = 1, linetype = "dashed", linewidth = 0.3, color = "grey50") +
   geom_vline(xintercept = elite_frac, linetype = "dotted", linewidth = 0.3, color = "grey50") +
+  geom_ribbon(aes(ymin = rho_lower, ymax = rho_upper), color = NA, alpha = 0.25) +
   geom_point(size = 1.5, stroke = 0) +
   scale_x_log10() +
   scale_color_manual(
@@ -689,22 +668,69 @@ gg_rich_club_frac <- ggplot(rich_club_avg, aes(x = frac_rich, y = mean_rho, colo
     values = density_colors,
     labels = c("0.0001", "10,000")
   ) +
+  scale_fill_manual(
+    name = "Population\ndensity",
+    values = density_colors,
+    labels = c("0.0001", "10,000")
+  ) +
   labs(
     x = "Fraction of population in club",
-    y = expression("Normalized rich-club coefficient ("*rho*")")
+    y = expression("Normalized rich-club coeff.")
   ) +
   theme_ctokita(color_bar = FALSE) +
   theme(
-    legend.position = "right",
+    legend.position = c(0.7, 0.8),
     legend.title = element_text(face = "bold")
   )
 
-gg_rich_club <- gg_rich_club_k + gg_rich_club_frac + plot_layout(ncol = 2)
+# Panel B: Sweep across density for rich-club coeff at top 10% of K
+elite_rich_club <- rich_club_summary %>%
+  filter(!is.na(rho)) %>%
+  group_by(population_density, replicate) %>%
+  summarise(
+    rho_elite = approx(x = log10(frac_rich), y = rho, xout = log10(elite_frac), ties = mean)$y,
+    .groups = "drop"
+  ) %>%
+  group_by(population_density) %>%
+  summarise(
+    n_reps = sum(!is.na(rho_elite)),
+    mean_rho = mean(rho_elite, na.rm = TRUE),
+    se_rho = sd(rho_elite, na.rm = TRUE) / sqrt(n_reps),
+    rho_lower = mean_rho - qt(0.975, n_reps - 1) * se_rho,
+    rho_upper = mean_rho + qt(0.975, n_reps - 1) * se_rho,
+    .groups = "drop"
+  )
+
+gg_rich_club_sweep <- 
+  ggplot(elite_rich_club, aes(x = population_density, y = mean_rho)) +
+  geom_hline(yintercept = 1, linetype = "dashed", linewidth = 0.3, color = "grey50") +
+  geom_ribbon(aes(ymin = rho_lower, ymax = rho_upper), color = NA, alpha = 0.25, fill = plot_pal) +
+  geom_line(linewidth = 0.6, color = plot_pal) +
+  geom_point(stroke = 0, size = 1.5, color = plot_pal) +
+  scale_x_log10(
+    breaks = 10**seq(-4, 4, 2),
+    expand = c(0, 0),
+    labels = trans_format("log10", math_format(10^.x))
+  ) +
+  scale_y_continuous(
+    expand = c(0, 0),
+    limits = c(0.95, 1.25)
+  ) +
+  coord_cartesian(clip = "off") +
+  labs(
+    x = expression("Population density, " * delta * italic(r)^2),
+    y = paste0("Normalized rich-club coeff. \namong top ", elite_frac * 100, "% by degree")
+  ) +
+  theme_ctokita() +
+  theme(axis.title.y = element_text(lineheight = 0.9))
+
+
+gg_rich_club <- gg_rich_club_frac + gg_rich_club_sweep + plot_layout(ncol = 2)
 
 gg_rich_club
 ggsave(
   gg_rich_club,
   filename = 'output/suppl_network_analysis/rich_club_coefficient.pdf',
-  width = 105, height = 45, units = 'mm',
+  width = 110, height = 47.5, units = 'mm',
   dpi = 400
 )
