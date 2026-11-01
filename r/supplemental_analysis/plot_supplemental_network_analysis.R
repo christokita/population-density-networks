@@ -28,6 +28,151 @@ density_colors <- c("1e-04" = low_pal, "10000" = high_pal)
 
 
 ##########################
+# PLOT: Clustering Coefficient by Population (N)
+##########################
+# Load data
+n_1000 <- read.csv('data_derived/full_parameter_sweep_results.csv') %>% 
+  filter(k_cap_mean == 50)
+n_500 <- read.csv('data_derived/sensitivity_analysis/select_density_results_N500.csv')
+n_2000 <- read.csv('data_derived/sensitivity_analysis/select_density_results_N2000.csv')
+n_5000 <- read.csv('data_derived/sensitivity_analysis/select_density_results_N5000.csv')
+
+# Plot clustering coefficient by population density
+clustering_coeff <- n_1000 %>% 
+  rbind(n_500, n_2000, n_5000) %>% 
+  group_by(n, population_density, radius) %>% 
+  summarise(
+    mean = mean(network_clustering_coef),
+    sd   = sd(network_clustering_coef),
+    .groups = "drop"
+  ) %>% 
+  # Normalize population density
+  mutate(
+    population_density_just_delta = population_density,
+    population_density = population_density * radius**2
+  ) %>% 
+  # Normalize within each N: 1 at the low-density plateau, 0 at the high-density plateau
+  group_by(n) %>% 
+  arrange(population_density, .by_group = TRUE) %>% 
+  mutate(
+    plateau_low  = mean(head(mean, 3)),
+    plateau_high = mean(tail(mean, 3)),
+    norm_mean  = (mean  - plateau_high) / (plateau_low - plateau_high),
+    norm_lower = (mean - sd - plateau_high) / (plateau_low - plateau_high),
+    norm_upper = (mean + sd - plateau_high) / (plateau_low - plateau_high)
+  ) %>% 
+  ungroup() %>% 
+  mutate(
+    n = gsub("000", ",000", as.character(n)),
+    n = factor(n, levels = c("500", "1,000", "2,000", "5,000"))
+  )
+
+n_pal <- rev(rocket(6)[2:5])
+gg_clustering_n <-
+  ggplot(clustering_coeff, aes(x=population_density, y=norm_mean, color = n, fill = n, group = n)) +
+  geom_ribbon(aes(ymin = norm_lower, ymax = norm_upper), color = NA, alpha = 0.2) +
+  geom_line(linewidth = 0.6) +
+  geom_point(stroke = 0, size = 2) +
+  scale_x_log10(
+    breaks = 10**seq(-6, 6, 2),
+    expand = c(0, 0),
+    labels = trans_format("log10", math_format(10^.x))
+  ) +
+  scale_y_continuous(
+    expand = c(0, 0)
+  ) +
+  scale_color_manual(
+    name = "n",
+    values = n_pal
+  ) +
+  scale_fill_manual(
+    name = "n",
+    values = n_pal
+  ) +
+  coord_cartesian(clip = "off") +
+  labs(
+    x = expression("Population density, " * delta * italic(r)^2),
+    y = "Clustering coefficient"
+  ) +
+  theme_ctokita() +
+  guides(
+    fill = guide_legend(),
+    color = guide_legend()
+  )
+
+gg_clustering_n
+ggsave(
+  gg_clustering_n,
+  filename = 'output/suppl_network_analysis/population_size_clustering_coeff.pdf',
+  width    = 60,
+  height   = 45,
+  units    = 'mm',
+  dpi      = 400
+)
+
+# Plot plateau points
+edge_at <- function(density, norm_value, target) {
+  # Curve runs from 1 (low-density plateau) down to 0 (high-density plateau).
+  # approx() needs x increasing, so reverse: interpolate density as a function
+  # of the normalized value.
+  ord <- order(norm_value)
+  stats::approx(
+    x    = norm_value[ord],
+    y    = log10(density[ord]),
+    xout = target
+  )$y
+}
+
+crossover_edges <- clustering_coeff %>%
+  group_by(n) %>%
+  summarise(
+    lower_edge = 10^edge_at(population_density, norm_mean, 0.9),
+    upper_edge = 10^edge_at(population_density, norm_mean, 0.1),
+    .groups = "drop"
+  ) %>%
+  mutate(n_numeric = as.numeric(gsub(",", "", as.character(n))))
+
+edges_long <- crossover_edges %>%
+  tidyr::pivot_longer(
+    cols      = c(lower_edge, upper_edge),
+    names_to  = "edge",
+    values_to = "density"
+  ) %>%
+  mutate(
+    edge = factor(
+      edge,
+      levels = c("lower_edge", "upper_edge"),
+      labels = c("Crossover onset", "Crossover completion")
+    )
+  )
+
+gg_crossover_edges <-
+  ggplot(edges_long, aes(x = n_numeric, y = density, color = edge, group = edge)) +
+  geom_ribbon(
+    data = crossover_edges,
+    aes(x = n_numeric, ymin = lower_edge, ymax = upper_edge),
+    inherit.aes = FALSE,
+    fill = "grey70", alpha = 0.2
+  ) +
+  geom_line(linewidth = 0.6) +
+  geom_point(stroke = 0, size = 2) +
+  scale_x_log10(
+    breaks = c(500, 1000, 2000, 5000),
+    labels = c("500", "1,000", "2,000", "5,000")
+  ) +
+  scale_y_log10(
+    breaks = 10^seq(-2, 6, 2),
+    labels = trans_format("log10", math_format(10^.x))
+  ) +
+  labs(
+    x = "Population size (N)",
+    y = expression("Population density, " * delta * italic(r)^2)
+  ) +
+  theme_ctokita()
+gg_crossover_edges
+
+
+##########################
 # PLOT: Network metrics under different interaction radius
 ##########################
 # Select social capacity from main set
