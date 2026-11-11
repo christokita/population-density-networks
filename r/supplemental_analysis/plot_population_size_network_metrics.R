@@ -17,13 +17,16 @@ source("_plot_themes/theme_ctokita.R")
 # Define plot features
 ##########################
 n_pal <- rev(rocket(6)[2:5])
+cap_pal <- rev(rocket(9)[2:7])
 edge_pal <- rocket(6)[c(4, 3, 2)]
 
 qual_pal <- mako(9)
 predictor_pal <- c("size" = qual_pal[4], "capacity" = qual_pal[7])
 
 density_label <- expression("Population density, " * delta * italic(r)^2)
-density_per_n_label <- expression("Population density, " * delta * italic(r)^2 * "/" * italic(N))
+population_size_label <- "Population\nsize, N"
+capacity_label <- "Social\ncapacity, μc"
+density_per_n_label <- "Population density relative\nto population size, δr²/N"
 density_per_capacity_label <- expression("Population density, " * delta * italic(r)^2 * "/" * mu[c])
 
 # Every metric recorded, plus mean degree derived from network density
@@ -305,9 +308,9 @@ crossover_width <- function(edges) {
 
 
 ##########################
-# Plotting functions
+# Plotting function
 ##########################
-# Normalized density sweep for one metric, one line per population size
+# Custom function to plot the metric of choice, one line per population size
 plot_normalized_sweep <- function(data, metric_name, metric_label, x_axis = "density", pal = n_pal) {
   # Grab metric and set the x-axis under test
   data <- 
@@ -345,11 +348,11 @@ plot_normalized_sweep <- function(data, metric_name, metric_label, x_axis = "den
       expand = c(0, 0)
     ) +
     scale_color_manual(
-      name = "n",
+      name = population_size_label,
       values = pal
     ) +
     scale_fill_manual(
-      name = "n",
+      name = population_size_label,
       values = pal
     ) +
     coord_cartesian(clip = "off") +
@@ -358,90 +361,9 @@ plot_normalized_sweep <- function(data, metric_name, metric_label, x_axis = "den
       y = metric_label
     ) +
     theme_ctokita() +
+    theme(axis.title.x = element_text(lineheight = 0.9)) +
     guides(
       fill = guide_legend(),
-      color = guide_legend()
-    )
-  return(gg_metric_plot)
-}
-
-# How far the end of the crossover shifts per 10-fold change in N or mu_c
-plot_crossover_shift <- function(slopes, pal = predictor_pal) {
-  slopes <- 
-    slopes %>% 
-    mutate(
-      predictor = factor(predictor, levels = c("size", "capacity")),
-      metric_label = factor(
-        metric_labels[metric],
-        levels = rev(metric_labels[focus_metrics])
-      )
-    )
-  
-  # Create plot
-  gg_metric_plot <-
-    ggplot(slopes, aes(x = slope, y = metric_label, color = predictor)) +
-    geom_vline(xintercept = 0, linetype = "solid", linewidth = 0.3, color = "grey50") +
-    geom_vline(xintercept = 1, linetype = "dashed", linewidth = 0.3, color = "grey50") +
-    geom_errorbar(
-      aes(xmin = slope_lower, xmax = slope_upper),
-      orientation = "y",
-      width = 0,
-      linewidth = 0.4,
-      position = position_dodge(width = 0.5)
-    ) +
-    geom_point(stroke = 0, size = 2, position = position_dodge(width = 0.5)) +
-    scale_x_continuous(
-      breaks = seq(-0.5, 1.5, 0.5)
-    ) +
-    scale_color_manual(
-      name = NULL,
-      values = pal,
-      labels = c(
-        size = expression("Population size, " * italic(N)),
-        capacity = expression("Social capacity, " * mu[c])
-      )
-    ) +
-    coord_cartesian(clip = "off") +
-    labs(
-      x = "Shift in crossover end\n(decades per 10-fold increase)",
-      y = NULL
-    ) +
-    theme_ctokita() +
-    guides(
-      color = guide_legend()
-    )
-  return(gg_metric_plot)
-}
-
-# Width of the crossover against population size
-plot_crossover_width <- function(widths, pal = edge_pal) {
-  widths <- 
-    widths %>% 
-    mutate(metric_label = factor(metric_labels[metric], levels = metric_labels[focus_metrics]))
-  
-  # Create plot
-  gg_metric_plot <-
-    ggplot(widths, aes(x = n, y = width, color = metric_label, group = metric_label)) +
-    geom_line(linewidth = 0.6) +
-    geom_point(stroke = 0, size = 2) +
-    scale_x_log10(
-      breaks = c(500, 1000, 2000, 5000),
-      labels = c("500", "1,000", "2,000", "5,000")
-    ) +
-    scale_y_continuous(
-      limits = c(0, NA)
-    ) +
-    scale_color_manual(
-      name = NULL,
-      values = pal
-    ) +
-    coord_cartesian(clip = "off") +
-    labs(
-      x = expression("Population size, " * italic(N)),
-      y = "Crossover width (decades)"
-    ) +
-    theme_ctokita() +
-    guides(
       color = guide_legend()
     )
   return(gg_metric_plot)
@@ -557,33 +479,207 @@ gg_modularity_collapse <- plot_normalized_sweep(
   x_axis = "density_per_n"
 )
 
-# D: what shifts the end of the crossover, population size or social capacity
-gg_crossover_shift <- plot_crossover_shift(completion_slopes)
-
 # Plot full grid
 gg_population_size_figure <-
   (
-    gg_clustering_collapse + gg_modularity_fan +
-      gg_modularity_collapse + gg_crossover_shift
+    gg_clustering_collapse + gg_modularity_fan + gg_modularity_collapse
   ) +
-  plot_layout(ncol = 2, guides = 'collect')
+  plot_layout(ncol = 3, guides = 'collect')
 
 gg_population_size_figure
 
-# ggsave(
-#   gg_population_size_figure,
-#   filename = 'output/suppl_network_analysis/population_size_collapse.pdf',
-#   width    = 140,
-#   height   = 105,
-#   units    = 'mm',
-#   dpi      = 400
-# )
+ggsave(
+  gg_population_size_figure,
+  filename = 'output/population_size_network_metrics.pdf',
+  width    = 155,
+  height   = 50,  #extra height to account for double x axis line in third panel
+  units    = 'mm',
+  dpi      = 400
+)
+
+
+##########################
+# PLOT: Supplement, social capacity as the second knob
+##########################
+# The capacity_min trim is there for modularity, so clustering can use the whole sweep
+capacity_curves <- 
+  lapply(focus_metrics, function(metric_name) {
+    normalize_metric(capacity_sweep, metric_name, group_var = "k_cap_mean")
+  }) %>% 
+  bind_rows()
+
+clustering_by_capacity <- 
+  capacity_curves %>% 
+  filter(metric == 'network_clustering_coef') %>% 
+  mutate(capacity = as.numeric(as.character(group)))
+
+# A: clustering fans out across social capacity on raw density
+gg_capacity_fan <-
+  ggplot(clustering_by_capacity, aes(x = population_density, y = norm_mean, color = capacity, fill = capacity, group = capacity)) +
+  geom_ribbon(aes(ymin = norm_lower, ymax = norm_upper), color = NA, alpha = 0.2) +
+  geom_line(linewidth = 0.6) +
+  geom_point(stroke = 0, size = 2) +
+  scale_x_log10(
+    breaks = 10**seq(-10, 6, 2),
+    expand = c(0, 0),
+    labels = trans_format("log10", math_format(10^.x))
+  ) +
+  scale_y_continuous(
+    expand = c(0, 0)
+  ) +
+  scale_color_gradientn(
+    name = capacity_label,
+    colors = cap_pal
+  ) +
+  scale_fill_gradientn(
+    name = capacity_label,
+    colors = cap_pal
+  ) +
+  coord_cartesian(clip = "off") +
+  labs(
+    x = density_label,
+    y = "Normalized clustering"
+  ) +
+  theme_ctokita()
+
+gg_capacity_fan
+ggsave(
+  gg_capacity_fan,
+  filename = 'output/suppl_network_analysis/social_capacity_clustering_coeff.pdf',
+  width    = 70,
+  height   = 45,
+  units    = 'mm',
+  dpi      = 400
+)
+
+# B: and lines up once density is measured per unit of social capacity
+gg_capacity_collapse <-
+  ggplot(clustering_by_capacity, aes(x = population_density / capacity, y = norm_mean, color = capacity, fill = capacity, group = capacity)) +
+  geom_ribbon(aes(ymin = norm_lower, ymax = norm_upper), color = NA, alpha = 0.2) +
+  geom_line(linewidth = 0.6) +
+  geom_point(stroke = 0, size = 2) +
+  scale_x_log10(
+    breaks = 10**seq(-10, 6, 2),
+    expand = c(0, 0),
+    labels = trans_format("log10", math_format(10^.x))
+  ) +
+  scale_y_continuous(
+    expand = c(0, 0)
+  ) +
+  scale_color_gradientn(
+    name = capacity_label,
+    colors = cap_pal
+  ) +
+  scale_fill_gradientn(
+    name = capacity_label,
+    colors = cap_pal
+  ) +
+  coord_cartesian(clip = "off") +
+  labs(
+    x = "Population density relative\nto social capacity, δr²/ mu_c",
+    y = "Normalized clustering"
+  ) +
+  theme_ctokita()
+
+gg_capacity_collapse
+ggsave(
+  gg_capacity_collapse,
+  filename = 'output/suppl_network_analysis/norm_social_capacity_clustering_coeff.pdf',
+  width    = 70,
+  height   = 46.5,
+  units    = 'mm',
+  dpi      = 400
+)
+
+# C: the same comparison as a slope. Avg. shortest path fits neither predictor, so leave it out
+# Slopes are plotted in log units but labelled as multipliers, so 1x is no shift
+shift_metrics <- c('network_clustering_coef', 'network_modularity')
+
+completion_shift <- 
+  completion_slopes %>% 
+  filter(metric %in% shift_metrics) %>% 
+  mutate(
+    predictor = factor(predictor, levels = c("size", "capacity")),
+    metric_label = factor(metric_labels[metric], levels = rev(metric_labels[shift_metrics]))
+  )
+
+gg_crossover_shift <-
+  ggplot(completion_shift, aes(x = slope, y = metric_label, color = predictor)) +
+  geom_vline(xintercept = 0, linetype = "solid", linewidth = 0.3, color = "grey50") +
+  geom_linerange(
+    aes(xmin = 0, xmax = slope),
+    orientation = "y",
+    linewidth = 0.6,
+    position = position_dodge(width = 0.6)
+  ) +
+  geom_point(stroke = 0, size = 2.5, position = position_dodge(width = 0.6)) +
+  scale_x_continuous(
+    breaks = log10(c(0.1, 0.2, 0.5, 1, 2, 5, 10)),
+    labels = c("0.1×", "0.2×", "0.5×", "1×", "2×", "5×", "10×"),
+    limits = c(-1, 1)
+  ) +
+  scale_color_manual(
+    name = NULL,
+    values = predictor_pal,
+    labels = c(
+      size = expression("Population size, " * italic(N)),
+      capacity = expression("Social capacity, " * mu[c])
+    )
+  ) +
+  coord_cartesian(clip = "off") +
+  labs(
+    x = "Shift in population density needed\nto complete network restructuring\n(per 10-fold increase)",
+    y = NULL
+  ) +
+  theme_ctokita() +
+  theme(axis.title.x = element_text(lineheight = 0.9)) +
+  guides(
+    color = guide_legend()
+  )
+
+gg_crossover_shift
+ggsave(
+  gg_crossover_shift,
+  filename = 'output/suppl_network_analysis/network_crossover_shift.pdf',
+  width    = 90,
+  height   = 48.5,
+  units    = 'mm',
+  dpi      = 400
+)
 
 
 ##########################
 # PLOT: Supplement, crossover width against population size
 ##########################
-gg_width <- plot_crossover_width(widths)
+width_by_metric <- 
+  widths %>% 
+  mutate(metric_label = factor(metric_labels[metric], levels = metric_labels[focus_metrics]))
+
+gg_width <-
+  ggplot(width_by_metric, aes(x = n, y = width, color = metric_label, group = metric_label)) +
+  geom_line(linewidth = 0.6) +
+  geom_point(stroke = 0, size = 2) +
+  scale_x_log10(
+    breaks = c(500, 1000, 2000, 5000),
+    labels = c("500", "1,000", "2,000", "5,000")
+  ) +
+  scale_y_continuous(
+    limits = c(0, NA)
+  ) +
+  scale_color_manual(
+    name = NULL,
+    values = edge_pal
+  ) +
+  coord_cartesian(clip = "off") +
+  labs(
+    x = expression("Population size, " * italic(N)),
+    y = "Crossover width (decades)"
+  ) +
+  theme_ctokita() +
+  guides(
+    color = guide_legend()
+  )
+
 gg_width
 
 # ggsave(
@@ -599,21 +695,27 @@ gg_width
 ##########################
 # PLOT: Supplement, every metric on both candidate axes
 ##########################
-plot_all_metrics <- function(curves, x_axis) {
-  panels <- lapply(live_metrics, function(metric_name) {
+gg_all_metrics_density <- 
+  wrap_plots(lapply(live_metrics, function(metric_name) {
     plot_normalized_sweep(
-      data = curves,
+      data = normalized_curves,
       metric_name = metric_name,
       metric_label = metric_labels[[metric_name]],
-      x_axis = x_axis
+      x_axis = "density"
     )
-  })
-  gg_grid <- wrap_plots(panels) + plot_layout(ncol = 3, guides = 'collect')
-  return(gg_grid)
-}
+  })) +
+  plot_layout(ncol = 3, guides = 'collect')
 
-gg_all_metrics_density <- plot_all_metrics(normalized_curves, "density")
-gg_all_metrics_per_n <- plot_all_metrics(normalized_curves, "density_per_n")
+gg_all_metrics_per_n <- 
+  wrap_plots(lapply(live_metrics, function(metric_name) {
+    plot_normalized_sweep(
+      data = normalized_curves,
+      metric_name = metric_name,
+      metric_label = metric_labels[[metric_name]],
+      x_axis = "density_per_n"
+    )
+  })) +
+  plot_layout(ncol = 3, guides = 'collect')
 
 gg_all_metrics_density
 gg_all_metrics_per_n

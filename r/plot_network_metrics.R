@@ -22,7 +22,7 @@ plot_pal <- heat_map_pal[5]
 
 
 ##########################
-# Load data
+# Load network data
 ##########################
 # Load full parameter sweep data
 sweep_data <- read.csv('data_derived/full_parameter_sweep_results.csv')
