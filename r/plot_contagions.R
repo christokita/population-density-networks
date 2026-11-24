@@ -139,11 +139,12 @@ gg_percent_complex <- ggplot(complex_final_fraction, aes(x = population_density,
     labels = trans_format("log10", math_format(10^.x))
   ) +
   scale_y_continuous(
-    expand = c(0, 0)
+    expand = c(0, 0),
+    labels = scales::percent,
   ) +
   coord_cartesian(clip = "off") +
   labs(
-    x = "Population density",
+    x = expression("Population density, " * delta * italic(r)^2),
     y = "% of network infected"
   ) +
   theme_ctokita()
@@ -196,7 +197,7 @@ gg_time_simple <- ggplot(simple_time_majority, aes(x = population_density, y = m
   ) +
   coord_cartesian(clip = "off") +
   labs(
-    x = "Population density",
+    x = expression("Population density, " * delta * italic(r)^2),
     y = "Time to reach majority"
   ) +
   theme_ctokita()
@@ -246,7 +247,7 @@ gg_time_complex <- ggplot(complex_time_majority, aes(x = population_density, y =
   ) +
   coord_cartesian(clip = "off") +
   labs(
-    x = "Population density",
+    x = expression("Population density, " * delta * italic(r)^2),
     y = "Time to reach majority"
   ) +
   theme_ctokita()
@@ -296,11 +297,12 @@ gg_majority_simple <- ggplot(simple_reached_majority, aes(x = population_density
   ) +
   scale_y_continuous(
     expand = c(0, 0),
-    limits = c(0, 1)
+    limits = c(0, 1),
+    labels = scales::percent
   ) +
   coord_cartesian(clip = "off") +
   labs(
-    x = "Population density",
+    x = expression("Population density, " * delta * italic(r)^2),
     y = "Reached majority of individuals"
   ) +
   theme_ctokita()
@@ -347,10 +349,11 @@ gg_majority_complex <- ggplot(complex_reached_majority, aes(x = population_densi
   ) +
   scale_y_continuous(
     expand = c(0, 0),
+    labels = scales::percent,,
   ) +
   coord_cartesian(clip = "off") +
   labs(
-    x = "Population density",
+    x = expression("Population density, " * delta * italic(r)^2),
     y = "Reached majority of individuals"
   ) +
   theme_ctokita()
@@ -396,7 +399,8 @@ gg_timeseries_simple <- ggplot() +
   ) +
   scale_y_continuous(
     limits = c(0, 1),
-    expand = c(0, 0)
+    expand = c(0, 0),
+    labels = scales::percent
   ) +
   scale_color_manual(
     name = "Population\ndensity",
@@ -450,7 +454,8 @@ gg_timeseries_complex <- ggplot() +
   scale_y_continuous(
     limits = c(0, 0.701),
     breaks = seq(0, 1, 0.1),
-    expand = c(0, 0)
+    expand = c(0, 0),
+    labels = scales::percent
   ) +
   scale_color_manual(
     name = "Population\ndensity",

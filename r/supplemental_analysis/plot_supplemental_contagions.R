@@ -11,6 +11,7 @@ require(scales)
 require(viridisLite)
 require(patchwork)
 require(brms)
+require(igraph)
 source("_plot_themes/theme_ctokita.R")
 
 
@@ -62,7 +63,8 @@ gg_percent_complex <- ggplot(complex_final_fraction,
     labels = trans_format("log10", math_format(10^.x))
   ) +
   scale_y_continuous(
-    expand = c(0, 0)
+    expand = c(0, 0),
+    labels = scales::percent,
   ) +
   scale_color_manual(
     name = 'Threshold\ndistribution',
@@ -205,7 +207,8 @@ gg_majority_complex <- ggplot(complex_reached_majority,
     labels = trans_format("log10", math_format(10^.x))
   ) +
   scale_y_continuous(
-    expand = c(0, 0)
+    expand = c(0, 0),
+    labels = scales::percent
   ) +
   scale_color_manual(
     name = 'Threshold\ndistribution',
@@ -236,3 +239,65 @@ ggsave(
   units = 'mm',
   dpi = 400
 )
+
+
+##########################
+# STAT: Percent of individuals with threshold below 1/k in uniform distribution
+##########################
+# Load full networks
+data_dir <- "data_derived/full_social_networks/"
+edgelist_files <- list.files(data_dir, pattern = "^edgelist-")
+
+single_exposure_summary <- data.frame()
+for (file in edgelist_files) {
+
+  density <- as.numeric(gsub(".*density_([0-9.e+-]+)-.*", "\\1", file, perl = TRUE))
+  replicate <- as.numeric(gsub(".*replicate_([0-9]+)\\.csv", "\\1", file, perl = TRUE))
+
+  edgelist <- read.csv(paste0(data_dir, file), header = TRUE)
+  nodelist_file <- gsub("^edgelist", "nodelist", file)
+  nodelist <- read.csv(paste0(data_dir, nodelist_file), header = TRUE)
+
+  # Degree of every individual (vertices = nodelist keeps isolates, in nodelist order)
+  g <- graph_from_data_frame(edgelist, directed = FALSE, vertices = nodelist)
+  node_degrees <- degree(g)
+
+  # Isolated individuals can never activate, so they are counted separately rather than included
+  connected_degrees <- node_degrees[node_degrees >= 1]
+
+  single_exposure_df <- data.frame(
+    population_density = density,
+    replicate = replicate,
+    mean_degree = mean(node_degrees),
+    min_degree = min(node_degrees),
+    frac_isolated = mean(node_degrees == 0),
+    frac_single_exposure = mean(1 / connected_degrees)
+  )
+
+  single_exposure_summary <- rbind(single_exposure_summary, single_exposure_df)
+  rm(g, edgelist, nodelist, node_degrees, connected_degrees, single_exposure_df)
+}
+
+# Average across replicates at each density
+single_exposure_avg <- single_exposure_summary %>%
+  group_by(population_density) %>%
+  summarise(
+    n_networks = n(),
+    mean_degree = mean(mean_degree),
+    min_degree = min(min_degree),
+    frac_isolated = mean(frac_isolated),
+    pct_single_exposure = 100 * mean(frac_single_exposure),
+    .groups = "drop"
+  ) %>%
+  arrange(population_density)
+
+print(single_exposure_avg, n = Inf)
+
+# Pooled value quoted in the manuscript
+sprintf(
+  "%.2f%% of individuals have a threshold below 1/k (range across densities: %.2f%%-%.2f%%)",
+  100 * mean(single_exposure_summary$frac_single_exposure),
+  min(single_exposure_avg$pct_single_exposure),
+  max(single_exposure_avg$pct_single_exposure)
+)
+

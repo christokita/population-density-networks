@@ -28,6 +28,71 @@ density_colors <- c("1e-04" = low_pal, "10000" = high_pal)
 
 
 ##########################
+# STAT: Social capacity filled by population density
+##########################
+# Load full networks
+data_dir <- "data_derived/full_social_networks/"
+edgelist_files <- list.files(data_dir, pattern = "^edgelist-")
+
+n_replicates <- 50
+replicate_counts <- list()
+
+capacity_summary <- data.frame()
+for (file in edgelist_files) {
+  
+  density <- as.numeric(gsub(".*density_([0-9.e+-]+)-.*", "\\1", file, perl = TRUE))
+  replicate <- as.numeric(gsub(".*replicate_([0-9]+)\\.csv", "\\1", file, perl = TRUE))
+  
+  density_key <- as.character(density)
+  if (is.null(replicate_counts[[density_key]])) replicate_counts[[density_key]] <- 0
+  if (replicate_counts[[density_key]] >= n_replicates) next
+  replicate_counts[[density_key]] <- replicate_counts[[density_key]] + 1
+  
+  edgelist <- read.csv(paste0(data_dir, file), header = TRUE)
+  nodelist_file <- gsub("^edgelist", "nodelist", file)
+  nodelist <- read.csv(paste0(data_dir, nodelist_file), header = TRUE)
+  
+  # Degree of every individual (vertices = nodelist keeps isolates, in nodelist order)
+  g <- graph_from_data_frame(edgelist, directed = FALSE, vertices = nodelist)
+  node_degrees <- degree(g)
+  
+  # Effective capacity: the model allows a new tie while degree < k_limit,
+  # so an individual can reach ceiling(k_limit) ties
+  capacity <- ceiling(nodelist$k_limit)
+  
+  capacity_df <- data.frame(
+    population_density = density,
+    replicate = replicate,
+    mean_degree = mean(node_degrees),
+    mean_capacity = mean(capacity),
+    frac_capacity_filled = sum(node_degrees) / sum(capacity), # population-level share filled
+    mean_indiv_filled = mean(node_degrees / capacity),        # average individual's share filled
+    frac_at_capacity = mean(node_degrees >= capacity)         # share of individuals at capacity
+  )
+  
+  capacity_summary <- rbind(capacity_summary, capacity_df)
+  rm(g, edgelist, nodelist, capacity, capacity_df)
+}
+
+# Average across replicates at each density
+capacity_avg <- capacity_summary %>%
+  group_by(population_density) %>%
+  summarise(
+    n_networks = n(),
+    mean_degree = mean(mean_degree),
+    mean_capacity = mean(mean_capacity),
+    sd_frac_filled = sd(frac_capacity_filled),
+    frac_filled = mean(frac_capacity_filled),
+    mean_indiv_filled = mean(mean_indiv_filled),
+    frac_at_capacity = mean(frac_at_capacity),
+    .groups = "drop"
+  ) %>%
+  arrange(population_density)
+
+print(capacity_avg, n = Inf)
+
+
+##########################
 # PLOT: Clustering Coefficient by Population (N)
 ##########################
 # Load data
